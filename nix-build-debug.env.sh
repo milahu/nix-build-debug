@@ -185,6 +185,109 @@ done
 } >.nix/.all_functions.sh
 
 [ $__rc = 0 ] &&
+function __echo_init_code() {
+    # based on https://github.com/NixOS/nixpkgs/blob/master/pkgs/stdenv/generic/setup.sh
+    # aka /nix/store/v5irq7wvkr7kih0hhnch5nnv2dcq8c4f-stdenv-linux/setup
+    cat <<'EOF'
+######################################################################
+# Initialisation.
+
+# If using structured attributes, export variables from `env` to the environment.
+# When not using structured attributes, those variables are already exported.
+if [[ -n $__structuredAttrs ]]; then
+    for envVar in "${!env[@]}"; do
+        declare -x "${envVar}=${env[${envVar}]}"
+    done
+fi
+
+
+# Set a fallback default value for SOURCE_DATE_EPOCH, used by some build tools
+# to provide a deterministic substitute for the "current" time. Note that
+# 315532800 = 1980-01-01 12:00:00. We use this date because python's wheel
+# implementation uses zip archive and zip does not support dates going back to
+# 1970.
+export SOURCE_DATE_EPOCH
+: "${SOURCE_DATE_EPOCH:=315532800}"
+
+
+# Wildcard expansions that don't match should expand to an empty list.
+# This ensures that, for instance, "for i in *; do ...; done" does the
+# right thing.
+shopt -s nullglob
+
+
+# quickfix: _defaultUnpack: tar: No such file or directory
+if false; then
+# Set up the initial path.
+PATH=
+HOST_PATH=
+for i in $initialPath; do
+    if [ "$i" = / ]; then i=; fi
+    addToSearchPath PATH "$i/bin"
+
+    # For backward compatibility, we add initial path to HOST_PATH so
+    # it can be used in auto patch-shebangs. Unfortunately this will
+    # not work with cross compilation.
+    if [ -z "${strictDeps-}" ]; then
+        addToSearchPath HOST_PATH "$i/bin"
+    fi
+done
+fi
+
+unset i
+
+if (( "${NIX_DEBUG:-0}" >= 1 )); then
+    echo "initial path: $PATH"
+fi
+
+
+# Check that the pre-hook initialised SHELL.
+if [ -z "${SHELL:-}" ]; then echo "SHELL not set"; exit 1; fi
+BASH="$SHELL"
+export CONFIG_SHELL="$SHELL"
+
+
+# Execute the pre-hook.
+if [ -z "${shell:-}" ]; then export shell="$SHELL"; fi
+runHook preHook
+
+
+# Allow the caller to augment buildInputs (it's not always possible to
+# do this before the call to setup.sh, since the PATH is empty at that
+# point; here we have a basic Unix environment).
+runHook addInputsHook
+
+# Package accumulators
+
+declare -a pkgsBuildBuild pkgsBuildHost pkgsBuildTarget
+declare -a pkgsHostHost pkgsHostTarget
+declare -a pkgsTargetTarget
+
+declare -a pkgBuildAccumVars=(pkgsBuildBuild pkgsBuildHost pkgsBuildTarget)
+declare -a pkgHostAccumVars=(pkgsHostHost pkgsHostTarget)
+declare -a pkgTargetAccumVars=(pkgsTargetTarget)
+
+declare -a pkgAccumVarVars=(pkgBuildAccumVars pkgHostAccumVars pkgTargetAccumVars)
+
+
+# Hooks
+
+declare -a envBuildBuildHooks envBuildHostHooks envBuildTargetHooks
+declare -a envHostHostHooks envHostTargetHooks
+declare -a envTargetTargetHooks
+
+declare -a pkgBuildHookVars=(envBuildBuildHook envBuildHostHook envBuildTargetHook)
+declare -a pkgHostHookVars=(envHostHostHook envHostTargetHook)
+declare -a pkgTargetHookVars=(envTargetTargetHook)
+
+declare -a pkgHookVarVars=(pkgBuildHookVars pkgHostHookVars pkgTargetHookVars)
+
+# those variables are declared here, since where and if they are used varies
+declare -a preFixupHooks fixupOutputHooks preConfigureHooks postFixupHooks postUnpackHooks unpackCmdHooks
+EOF
+} # end of __echo_init_code
+
+[ $__rc = 0 ] &&
 {
     echo "set -e" # stop on error
 
@@ -242,5 +345,14 @@ done
     #echo "export PS4='\n# \$($__realpath --relative-to=\$PWD --relative-base=\$PWD \${BASH_SOURCE} | $__sed -E 's/\.line[0-9]+\.sh$//') \${LINENO} # \${FUNCNAME[0]}\n# '"
     echo "export PS4='\n# \$($__realpath --relative-to=\$PWD --relative-base=\$PWD \${BASH_SOURCE} | $__sed -E \"s/\.line[0-9]+\.sh$//\") \${LINENO} # \${FUNCNAME[0]}\n# '"
     #echo "set -x" # trace all commands
+
+    # FIXME this should run only once before all phases
+    # not before each phase
+    # so each phase can modify this global state
+    # and pass it to following phases
+    __echo_init_code
+
+    # fix: do not know how to unpack source archive
+    echo "unpackCmdHooks+=(_defaultUnpack)"
 
 } >.nix/.init_phase.sh
