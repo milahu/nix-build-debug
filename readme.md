@@ -8,6 +8,12 @@ debug nix-build in a nix-shell
 
 
 
+## status
+
+early draft. not functional. not usable
+
+
+
 ## usage
 
 
