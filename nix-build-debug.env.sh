@@ -327,6 +327,7 @@ EOF
 
     #echo "__d=\$(dirname \"\$0\")"
     echo "__d=\$(dirname \"\$BASH_SOURCE\")"
+    echo "__workdir=\"\$PWD\""
     echo "shopt -s extglob" # fix: syntax error near unexpected token `('
     #echo "source \"\$__d\"/_nix_functions.sh" # import bash functions: runHook, ...
     #echo "source \"\$__d\"/.nix/.all_functions.sh" # import bash functions: runHook, ...
@@ -334,16 +335,7 @@ EOF
 
     echo "export GZIP_NO_TIMESTAMPS=1"
 
-    #echo "export PS4='+ Line \${LINENO}: '"
-    #echo "export PS4='+ \${BASH_SOURCE} \${LINENO} \${FUNCNAME[0]:+\${FUNCNAME[0]}: }'"
-    #echo "export PS4='+ \${BASH_SOURCE#*/} \${LINENO} \${FUNCNAME[0]:+\${FUNCNAME[0]}: }'"
-    #echo "export PS4='+ \${BASH_SOURCE} \${LINENO}: '"
-    #echo "export PS4='\n# \${BASH_SOURCE} \${LINENO}\n# '"
-    #echo "export PS4='\n# \$(realpath --relative-to=\$PWD \${BASH_SOURCE}) \${LINENO}\n# '"
-    #echo "export PS4='\n# \$(realpath --relative-to=\$PWD --relative-base=\$PWD \${BASH_SOURCE} | sed -E 's/\.line[0-9]+\.sh$//') \${LINENO}\n# '"
-    #echo "export PS4='\n# \$(realpath --relative-to=\$PWD --relative-base=\$PWD \${BASH_SOURCE} | sed -E 's/\.line[0-9]+\.sh$//') \${LINENO} # \${FUNCNAME[0]:+\${FUNCNAME[0]}\n# '"
-    #echo "export PS4='\n# \$($__realpath --relative-to=\$PWD --relative-base=\$PWD \${BASH_SOURCE} | $__sed -E 's/\.line[0-9]+\.sh$//') \${LINENO} # \${FUNCNAME[0]}\n# '"
-    echo "export PS4='\n# \$($__realpath --relative-to=\$PWD --relative-base=\$PWD \${BASH_SOURCE} | $__sed -E \"s/\.line[0-9]+\.sh$//\") \${LINENO} # \${FUNCNAME[0]}\n# '"
+    echo "export PS4='\n# \$($__realpath --relative-to=\"\$__workdir\" --relative-base=\"\$__workdir\" \"\$__workdir/\${BASH_SOURCE}\" | $__sed -E \"s/\.line[0-9]+\.sh$//\") \${LINENO} # \${FUNCNAME[0]}\n# cwd: \$($__realpath --relative-to=\$__workdir --relative-base=\$__workdir \"\$PWD\")\n# '"
     #echo "set -x" # trace all commands
 
     # FIXME this should run only once before all phases
@@ -354,5 +346,30 @@ EOF
 
     # fix: do not know how to unpack source archive
     echo "unpackCmdHooks+=(_defaultUnpack)"
+
+    # fix: default is $TMP but the build root is $PWD
+    echo "export NIX_BUILD_TOP=\"\$PWD\""
+
+    # trap exit, both "exit 0" and "exit 1" (etc)
+    # we need this to export state-changes from phase scripts to the current shell
+    # example: "cd $sourceRoot"
+    # https://unix.stackexchange.com/a/322213/295986
+    echo "__cleanup() {"
+    echo "    err=\$?"
+    echo "    set +x" # stop tracing
+    echo "    echo cleanup..."
+    echo "    echo cleanup: writing \$__workdir/.todo-export-phase-state"
+    echo "    echo \"PWD=\${PWD@Q}\" >\"\$__workdir\"/.todo-export-phase-state"
+    echo "    trap '' EXIT INT TERM"
+    echo "    exit $err"
+    echo "}"
+    echo "__sig_cleanup() {"
+    echo "    set +x" # stop tracing
+    echo "    trap '' EXIT" # some shells will call EXIT after the INT handler
+    echo "    false" # sets $?
+    echo "    __cleanup"
+    echo "}"
+    echo "trap __cleanup EXIT"
+    echo "trap __sig_cleanup INT QUIT TERM"
 
 } >.nix/.init_phase.sh
