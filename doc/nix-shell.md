@@ -38,6 +38,34 @@ drv.inputSrcs.insert(std::move(getEnvShPath));
 return outPath;
 ```
 
+`get-env.sh` writes a json file to `$out`
+
+the `env.json` file looks like
+
+```json
+{
+  "bashFunctions": {
+    "_accumFlagsArray":"..."
+    ...
+  },
+  "variables": {
+    "CC": {"type": "exported", "value": "gcc"},
+    "builder": {"type": "exported", "value": "/nix/store/9vafkkic27k7m4934fpawl6yip3a6k4h-bash-5.2-p21/bin/bash"},
+    "outputBin": {"type": "var", "value": "out"},
+    "pkgsHostHost": {"type": "array", "value": []},
+    "preConfigurePhases": {"type": "var", "value": " updateAutotoolsGnuConfigScriptsPhase updateAutotoolsGnuConfigScriptsPhase"},
+    "prefix": {"type": "var", "value": "/nix/store/xmccz9w8wqks0kvs8jcwpyg8hswc4ga7-hello-2.12.1"},
+    "test_assoc": {"type": "associative", "value": {
+      "key": "val"
+    }},
+    ...
+  }
+}
+```
+
+the `env.json` file is parsed in
+
+
 ```cc
 static BuildEnvironment fromJSON(std::string_view in)
 {
