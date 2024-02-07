@@ -35,38 +35,76 @@
 
 
 
+# FIXME add a phase runner function to call the phase scripts
+# and to apply state changes like
+#   cd $sourceRoot
+#   someGlobalArray+=(someValue)
+
+
+
+# this script is sourced, so we cannot call "exit 1"
+# instead, check $__rc before every step
+__rc=0
+
+__get_bin_path() {
+  if ! command -v "$1"; then
+    __rc=1
+    echo "error: missing dependency ${1@Q}" >&2
+    return 1
+  fi
+  return 1
+}
+
+[ $__rc = 0 ] &&
+__realpath=$(__get_bin_path realpath)
+
+[ $__rc = 0 ] &&
+__sed=$(__get_bin_path sed)
+
+#__get_bin_path no-such-bin-$RANDOM # test
+
 # run build in tempdir
 # no. user should do this manually
 #cd $(mktemp -d)
 
 # dont install to /nix/store
+[ $__rc = 0 ] &&
 for n in $outputs; do eval export $n=$PWD/result-$n; done
 
 # https://github.com/NixOS/nixpkgs/blob/master/pkgs/stdenv/generic/setup.sh
+[ $__rc = 0 ] &&
 phases="${prePhases[*]:-} unpackPhase patchPhase ${preConfigurePhases[*]:-} \
     configurePhase ${preBuildPhases[*]:-} buildPhase checkPhase \
     ${preInstallPhases[*]:-} installPhase ${preFixupPhases[*]:-} fixupPhase installCheckPhase \
     ${preDistPhases[*]:-} distPhase ${postPhases[*]:-}";
 
 # based on genericBuild
+[ $__rc = 0 ] &&
 if [ -f "${buildCommandPath:-}" ]; then
     #source "$buildCommandPath"
     #buildCommand=$(<"$buildCommandPath")
     phases="buildCommandPath"
 fi
+
+[ $__rc = 0 ] &&
 if [ -n "${buildCommand:-}" ]; then
     #eval "$buildCommand"
     #eval "function buildCommand() { $buildCommand ; }"
     phases="buildCommand"
 fi
 
+[ $__rc = 0 ] &&
 phasesArray=($phases)
 
+[ $__rc = 0 ] &&
 phasesCount=${#phasesArray[@]}
+
+[ $__rc = 0 ] &&
 idxFormat="%0${#phasesCount}d"
 
 #body_start_line="######## nix build phase body start ########"
 
+[ $__rc = 0 ] &&
 for ((idx = 0; idx < phasesCount; idx++)); do
     curPhase="${phasesArray[$idx]}"
     #curPhase="testPhase"; testPhase=$'echo hello\necho world\nexit 0' # test
@@ -132,15 +170,21 @@ done
 #declare -f >_nix_functions.sh
 #. _nix_functions.sh
 
+[ $__rc = 0 ] &&
 mkdir -p .nix
+
+[ $__rc = 0 ] &&
 for funcName in $(declare -F | cut -d' ' -f3); do
   declare -f $funcName >.nix/$funcName.sh
 done
+
+[ $__rc = 0 ] &&
 {
   echo "__d=\$(dirname \"\$BASH_SOURCE\")"
   declare -F | cut -d' ' -f3 | sed 's/.*/source "$__d"\/&.sh/'
 } >.nix/.all_functions.sh
 
+[ $__rc = 0 ] &&
 {
     echo "set -e" # stop on error
 
@@ -193,9 +237,10 @@ done
     #echo "export PS4='+ \${BASH_SOURCE} \${LINENO}: '"
     #echo "export PS4='\n# \${BASH_SOURCE} \${LINENO}\n# '"
     #echo "export PS4='\n# \$(realpath --relative-to=\$PWD \${BASH_SOURCE}) \${LINENO}\n# '"
-    echo "export PS4='\n# \$(realpath --relative-to=\$PWD \${BASH_SOURCE} | sed -E 's/\.line[0-9]+\.sh$//') \${LINENO}\n# '"
+    #echo "export PS4='\n# \$(realpath --relative-to=\$PWD --relative-base=\$PWD \${BASH_SOURCE} | sed -E 's/\.line[0-9]+\.sh$//') \${LINENO}\n# '"
+    #echo "export PS4='\n# \$(realpath --relative-to=\$PWD --relative-base=\$PWD \${BASH_SOURCE} | sed -E 's/\.line[0-9]+\.sh$//') \${LINENO} # \${FUNCNAME[0]:+\${FUNCNAME[0]}\n# '"
+    #echo "export PS4='\n# \$($__realpath --relative-to=\$PWD --relative-base=\$PWD \${BASH_SOURCE} | $__sed -E 's/\.line[0-9]+\.sh$//') \${LINENO} # \${FUNCNAME[0]}\n# '"
+    echo "export PS4='\n# \$($__realpath --relative-to=\$PWD --relative-base=\$PWD \${BASH_SOURCE} | $__sed -E \"s/\.line[0-9]+\.sh$//\") \${LINENO} # \${FUNCNAME[0]}\n# '"
     #echo "set -x" # trace all commands
-    # FIXME runHook: command not found
-    # inherit bash functions of parent shell
 
 } >.nix/.init_phase.sh
