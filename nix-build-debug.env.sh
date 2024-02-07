@@ -120,9 +120,9 @@ idxFormat="%0${#phasesCount}d"
 for ((idx = 0; idx < phasesCount; idx++)); do
     curPhase="${phasesArray[$idx]}"
     #curPhase="testPhase"; testPhase=$'echo hello\necho world\nexit 0' # test
-    phaseFile=nix.$(printf "$idxFormat" "$idx").$curPhase.sh
+    phaseFile="$NIX_BUILD_DEBUG_ROOT"/.nix/phase.$(printf "$idxFormat" "$idx").$curPhase.sh
     body_start_line="################ $curPhase ################"
-    echo "writing $phaseFile"
+    echo "writing ${phaseFile@Q}"
     #echo "eval \"\${$curPhase:-$curPhase}\""
     if [ "$curPhase" = "buildCommandPath" ]; then
         s="$body_start_line"$'\n'$(< "$buildCommandPath")
@@ -141,7 +141,13 @@ for ((idx = 0; idx < phasesCount; idx++)); do
     else
         # $curPhase is bash code
         #s="$curPhase"
-        s="$body_start_line"$'\n'"${!curPhase}"
+        s="${!curPhase}"
+        if [ -z "$s" ]; then
+            echo "error: phase ${curPhase@Q} is empty string" >&2
+            __rc=1
+            break
+        fi
+        s="$body_start_line"$'\n'"$s"
         # no. eval breaks tracing
         if false; then
         # declare
@@ -169,8 +175,8 @@ for ((idx = 0; idx < phasesCount; idx++)); do
         echo "set -x" # trace all commands
 
         echo "$s"
-    } >$phaseFile
-    chmod +x $phaseFile
+    } >"$phaseFile"
+    chmod +x "$phaseFile"
 done
 
 # export bash options: set -x, ...
@@ -183,18 +189,21 @@ done
 #. _nix_functions.sh
 
 [ $__rc = 0 ] &&
-mkdir -p .nix
+mkdir -p "$NIX_BUILD_DEBUG_ROOT/.nix"
+
+[ $__rc = 0 ] &&
+mkdir -p "$NIX_BUILD_DEBUG_ROOT/.nix/lib"
 
 [ $__rc = 0 ] &&
 for funcName in $(declare -F | cut -d' ' -f3); do
-  declare -f $funcName >.nix/$funcName.sh
+  declare -f $funcName >"$NIX_BUILD_DEBUG_ROOT/.nix/lib/$funcName.sh"
 done
 
 [ $__rc = 0 ] &&
 {
   echo "__d=\$(dirname \"\$BASH_SOURCE\")"
   declare -F | cut -d' ' -f3 | sed 's/.*/source "$__d"\/&.sh/'
-} >.nix/.all_functions.sh
+} >"$NIX_BUILD_DEBUG_ROOT/.nix/lib/.all_functions.sh"
 
 [ $__rc = 0 ] &&
 function __echo_init_code() {
@@ -343,8 +352,8 @@ EOF
     echo "__workdir=\"\$PWD\""
     echo "shopt -s extglob" # fix: syntax error near unexpected token `('
     #echo "source \"\$__d\"/_nix_functions.sh" # import bash functions: runHook, ...
-    #echo "source \"\$__d\"/.nix/.all_functions.sh" # import bash functions: runHook, ...
-    echo "source \"\$__d\"/.all_functions.sh" # import bash functions: runHook, ...
+    #echo "source \"\$__d\"/.nix/lib/.all_functions.sh" # import bash functions: runHook, ...
+    echo "source \"\$__d\"/lib/.all_functions.sh" # import bash functions: runHook, ...
 
     echo "export GZIP_NO_TIMESTAMPS=1"
 
@@ -394,7 +403,7 @@ __workdir="$PWD"
 
 
 
-function debug-nix-build () {
+function nix-build-debug () {
     local args=("$@")
     local i
     local cmd=help
@@ -419,8 +428,8 @@ function debug-nix-build () {
                 cmd=list
                 # list all phases in order
                 # FIXME $__d
-                echo ls "$__d/nix.*.sh"
-                ls "$__d"/nix.*.sh
+                echo ls "$NIX_BUILD_DEBUG_ROOT/.nix/phase.*.sh"
+                ls "$NIX_BUILD_DEBUG_ROOT"/.nix/phase.*.sh
                 return 0
                 ;;
             run|r|x)
@@ -434,6 +443,7 @@ function debug-nix-build () {
                     #return 1
                     # TODO run all phases
                     #phases="..."
+                    :
                 fi
                 ;;
             *)
