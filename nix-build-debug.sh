@@ -3,7 +3,7 @@
 d=$(readlink -f "$(dirname "$0")")
 
 # get-env.sh
-# based on https://github.com/NixOS/nix/blob/master/src/nix/get-env.sh.gen.hh
+# based on https://github.com/NixOS/nix/blob/master/src/nix/get-env.sh
 
 # FIXME parse args
 # example: nix-build-debug '<nixpkgs>' -A hello
