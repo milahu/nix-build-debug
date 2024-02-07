@@ -98,3 +98,26 @@ $ ./nix.03*
 - https://discourse.nixos.org/t/nix-build-phases-run-nix-build-phases-interactively/36090
 - https://nixos.wiki/wiki/Development_environment_with_nix-shell#stdenv.mkDerivation
 - https://github.com/NixOS/nixpkgs/blob/master/pkgs/stdenv/generic/setup.sh
+
+
+
+## keywords
+
+- nix-shell
+  - nix-shell with build dependencies of derivation
+  - nix develop
+  - rewrite nix-shell in bash
+    - generate rcfile for bash
+    - get-env.sh
+    - dump nix-shell environment to json file
+    - declare bash variables
+    - declare bash functions
+    - bashFunctions
+- nix-build
+  - what would nix-build do
+  - debug build phases of nix-build
+  - debug a failing nix-build
+  - debug a failing nix build
+- nix
+  - nixos
+  - nixpkgs
