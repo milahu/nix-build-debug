@@ -188,6 +188,7 @@ done
 function __echo_init_code() {
     # based on https://github.com/NixOS/nixpkgs/blob/master/pkgs/stdenv/generic/setup.sh
     # aka /nix/store/v5irq7wvkr7kih0hhnch5nnv2dcq8c4f-stdenv-linux/setup
+    # FIXME move this to a separate file. too much
     cat <<'EOF'
 ######################################################################
 # Initialisation.
@@ -335,7 +336,7 @@ EOF
 
     echo "export GZIP_NO_TIMESTAMPS=1"
 
-    echo "export PS4='\n# \$($__realpath --relative-to=\"\$__workdir\" --relative-base=\"\$__workdir\" \"\$__workdir/\${BASH_SOURCE}\" | $__sed -E \"s/\.line[0-9]+\.sh$//\") \${LINENO} # \${FUNCNAME[0]}\n# cwd: \$($__realpath --relative-to=\$__workdir --relative-base=\$__workdir \"\$PWD\")\n# '"
+    echo "export PS4='\n# \$($__realpath --relative-to=\"\$__d\" --relative-base=\"\$__d\" \"\$__d/\${BASH_SOURCE}\" | $__sed -E \"s/\.line[0-9]+\.sh$//\") \${LINENO} # \${FUNCNAME[0]}\n# cwd: \$($__realpath --relative-to=\$__d --relative-base=\$__d \"\$PWD\")\n# '"
     #echo "set -x" # trace all commands
 
     # FIXME this should run only once before all phases
@@ -358,8 +359,8 @@ EOF
     echo "    err=\$?"
     echo "    set +x" # stop tracing
     echo "    echo cleanup..."
-    echo "    echo cleanup: writing \$__workdir/.todo-export-phase-state"
-    echo "    echo \"PWD=\${PWD@Q}\" >\"\$__workdir\"/.todo-export-phase-state"
+    echo "    echo cleanup: writing \$__d/.todo-export-phase-state"
+    echo "    echo \"PWD=\${PWD@Q}\" >\"\$__d\"/.todo-export-phase-state"
     echo "    trap '' EXIT INT TERM"
     echo "    exit $err"
     echo "}"
@@ -373,3 +374,59 @@ EOF
     echo "trap __sig_cleanup INT QUIT TERM"
 
 } >.nix/.init_phase.sh
+
+
+
+__d=$(dirname "$BASH_SOURCE")
+__workdir="$PWD"
+
+
+
+function debug-nix-build () {
+    local args=("$@")
+    local i
+    local cmd=help
+    local phases
+    local help_text=(
+        "debug-nix-build: usage:"
+        "  debug-nix-build list"
+        "  debug-nix-build run # run all build phases, stop on error"
+        "  debug-nix-build run somePhase"
+        "  debug-nix-build run somePhase 123 # continue running somePhase from line 123"
+    )
+    for ((i = 0; i < ${#args[@]}; i++)); do
+        arg="${args[$i]}"
+        echo "debug-nix-build: arg $i: ${arg@Q}" >&2
+        case "$arg" in
+            help|h)
+                cmd=help
+                printf "%s\n" "${help_text[@]}" >&2
+                return 0
+                ;;
+            list|ls|l)
+                cmd=list
+                # list all phases in order
+                # FIXME $__d
+                echo ls "$__d/nix.*.sh"
+                ls "$__d"/nix.*.sh
+                return 0
+                ;;
+            run|r|x)
+                cmd=run
+                : $((i++))
+                phases="${args[$i]}"
+                #echo "debug-nix-build run: phases=${phases@Q}" >&2
+                if [ -z "$phases" ]; then
+                    #echo "debug-nix-build run: error: no phase" >&2
+                    #printf "%s\n" "${help_text[@]}" >&2
+                    #return 1
+                    # TODO run all phases
+                    #phases="..."
+                fi
+                ;;
+            *)
+                echo "debug-nix-build: arg $i: ${arg@Q} - TODO" >&2
+                ;;
+        esac
+    done
+}
