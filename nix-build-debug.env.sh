@@ -104,7 +104,7 @@ idxFormat="%0${#phasesCount}d"
 for ((idx = 0; idx < phasesCount; idx++)); do
     curPhase="${phasesArray[$idx]}"
     #curPhase="testPhase"; testPhase=$'echo hello\necho world\nexit 0' # test
-    phaseFile="$NIX_BUILD_DEBUG_ROOT"/.nix/phase.$(printf "$idxFormat" "$idx").$curPhase.sh
+    phaseFile="$NIX_BUILD_TOP"/.nix/phase.$(printf "$idxFormat" "$idx").$curPhase.sh
     body_start_line="################ $curPhase ################"
     echo "writing ${phaseFile@Q}"
     #echo "eval \"\${$curPhase:-$curPhase}\""
@@ -173,21 +173,21 @@ done
 #. _nix_functions.sh
 
 [ $__rc = 0 ] &&
-mkdir -p "$NIX_BUILD_DEBUG_ROOT/.nix"
+mkdir -p "$NIX_BUILD_TOP/.nix"
 
 [ $__rc = 0 ] &&
-mkdir -p "$NIX_BUILD_DEBUG_ROOT/.nix/lib"
+mkdir -p "$NIX_BUILD_TOP/.nix/lib"
 
 [ $__rc = 0 ] &&
 for funcName in $(declare -F | cut -d' ' -f3); do
-  declare -f $funcName >"$NIX_BUILD_DEBUG_ROOT/.nix/lib/$funcName.sh"
+  declare -f $funcName >"$NIX_BUILD_TOP/.nix/lib/$funcName.sh"
 done
 
 [ $__rc = 0 ] &&
 {
   echo "__d=\$(dirname \"\$BASH_SOURCE\")"
   declare -F | cut -d' ' -f3 | sed 's/.*/source "$__d"\/&.sh/'
-} >"$NIX_BUILD_DEBUG_ROOT/.nix/lib/.all_functions.sh"
+} >"$NIX_BUILD_TOP/.nix/lib/.all_functions.sh"
 
 [ $__rc = 0 ] &&
 function __echo_init_code() {
@@ -412,8 +412,8 @@ function nix-build-debug () {
                 cmd=list
                 # list all phases in order
                 # FIXME $__d
-                echo ls "$NIX_BUILD_DEBUG_ROOT/.nix/phase.*.sh"
-                ls "$NIX_BUILD_DEBUG_ROOT"/.nix/phase.*.sh
+                echo ls "$NIX_BUILD_TOP/.nix/phase.*.sh"
+                ls "$NIX_BUILD_TOP"/.nix/phase.*.sh
                 return 0
                 ;;
             run|r|x)
