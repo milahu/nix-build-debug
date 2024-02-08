@@ -42,18 +42,6 @@
 
 
 
-# no color
-#export PS1='\nnix-build-debug $ '
-# based on /etc/bashrc
-PROMPT_COLOR="1;31m"
-((UID)) && PROMPT_COLOR="1;32m"
-# long: with workdir
-#export PS1="\n\[\033[$PROMPT_COLOR\]\[\e]0;nix-build-debug \w\a\]nix-build-debug \w \\$\[\033[0m\] "
-# short
-export PS1="\n\[\033[$PROMPT_COLOR\]\[\e]0;nix-build-debug \a\]nix-build-debug \\$\[\033[0m\] "
-
-
-
 # this script is sourced, so we cannot call "exit 1"
 # instead, check $__rc before every step
 __rc=0
@@ -78,10 +66,6 @@ __sed=$(__get_bin_path sed)
 # run build in tempdir
 # no. user should do this manually
 #cd $(mktemp -d)
-
-# dont install to /nix/store
-[ $__rc = 0 ] &&
-for n in $outputs; do eval export $n=$PWD/result-$n; done
 
 # https://github.com/NixOS/nixpkgs/blob/master/pkgs/stdenv/generic/setup.sh
 [ $__rc = 0 ] &&
