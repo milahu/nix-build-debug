@@ -234,7 +234,7 @@ echo "$env_json" >"$env_json_path"
 
 
 # usually this is /bin/bash
-builder=$(echo "$env_json" | jq -r '.variables.builder.value')
+builder=$(echo "$env_json" | jq -r '.variables.builder.value // empty')
 
 if ! echo "$builder" | grep -q '/bin/bash$'; then
     # nix/develop.cc
