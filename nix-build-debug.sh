@@ -171,6 +171,15 @@ nix_build_env_expr=$(
     # env.json: {"variables": {"prePhases": {"type": "exported", "value": "prePhaseTest1 prePhaseTest2"}}
     #echo "  prePhases = [ ''prePhaseTest1'' ''prePhaseTest2'' ];"
 
+    # test: empty phase
+    # this is no error, stdenv will use the default unpackPhase function
+    # nix-build -E 'with import <nixpkgs> {}; hello.overrideAttrs (o: { unpackPhase = ""; })'
+    #echo '  unpackPhase = "";'
+
+    # test: missing phase
+    # nix-build -E 'with import <nixpkgs> {}; hello.overrideAttrs (o: { prePhases = ["missingPhase"]; })'
+    #echo '  prePhases = ["missingPhase"];'
+
     echo "  buildCommand = ''"
     # run get-env.sh to write env.json to $out
     echo "    source \${$get_env_path}"
