@@ -147,6 +147,13 @@ nix_build_env_expr=$(
 
     echo "$pkg_attr.overrideAttrs (oldAttrs: {"
 
+    # create backup of buildCommandPath
+    echo "  buildCommandPath_bak_nix_build_debug ="
+    # test: use this script as builder
+    #echo "    let oldAttrs = { buildCommandPath = $0; }; in"
+    echo "    if oldAttrs ? buildCommandPath then oldAttrs.buildCommandPath"
+    echo "    else null;"
+
     # create backup of buildCommand
     echo "  buildCommand_bak_nix_build_debug ="
     echo "    if oldAttrs ? buildCommand then oldAttrs.buildCommand"
