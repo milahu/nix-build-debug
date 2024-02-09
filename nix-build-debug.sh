@@ -187,11 +187,22 @@ $debug &&
 echo "getting the build environment ..." >&2
 
 # this takes some seconds
-env_json=$(nix-build -E "$nix_build_env_expr" 2>&1)
+nix_build_out=$(nix-build -E "$nix_build_env_expr" 2>&1)
 
 # extract json from build output
-env_json=$(echo "$env_json" | awk "/^$env_json_start$/{flag=1; next} /^$env_json_end$/{flag=0} flag")
+env_json=$(echo "$nix_build_out" | awk "/^$env_json_start$/{flag=1; next} /^$env_json_end$/{flag=0} flag")
 #echo "env_json: $env_json" >&2
+
+if [ -z "$env_json" ]; then
+    echo "error: failed to get the build environment" >&2
+    echo "output from nix-build:" >&2
+    echo "$nix_build_out" >&2
+    exit 1
+fi
+
+# cleanup
+unset nix_build_env_expr
+unset nix_build_out
 
 # write json file
 env_json_path="$debug_dir/etc/env.json"
@@ -316,15 +327,15 @@ echo "writing $variables_path" >&2
 
 
 
-functions_dir="$debug_dir/lib"
-mkdir -p "$functions_dir"
+lib_dir="$debug_dir/lib"
+mkdir -p "$lib_dir"
 $debug &&
-echo "writing functions to $functions_dir" >&2
+echo "writing functions to $lib_dir" >&2
 function_name_list=()
 
 while read function_name; do
 
-    function_path="$functions_dir/$function_name.sh"
+    function_path="$lib_dir/$function_name.sh"
     function_name_list+=($function_name)
 
     $debug2 &&
@@ -362,7 +373,7 @@ for phase in $phases; do
     # we cannot overwrite the buildPhase function
     # because the buildPhase string can call the original buildPhase function
 
-    function_path="$functions_dir/$function_name.sh"
+    function_path="$lib_dir/$function_name.sh"
     function_name_list+=($function_name)
 
     $debug &&
@@ -383,7 +394,7 @@ done
 # should be
 #   if declare -F ${curPhase}_from_string >/dev/null; then ${curPhase}_from_string; else $curPhase; fi
 
-function_path="$functions_dir"/runPhase.sh
+function_path="$lib_dir"/runPhase.sh
 $debug &&
 echo "patching the runPhase function in ${function_path@Q} to call our \${curPhase}_from_string functions" >&2
 sed_script='s/eval "${!curPhase:-$curPhase}";/'
@@ -454,7 +465,7 @@ echo "writing $bashrc_path"
     #echo "[ -e \"$stdenv_setup\" ] && source \"$stdenv_setup\""
     echo "source ${variables_path@Q}"
     for function_name in ${function_name_list[@]}; do
-        function_path="$functions_dir/$function_name.sh"
+        function_path="$lib_dir/$function_name.sh"
         echo "source ${function_path@Q}"
     done
 
