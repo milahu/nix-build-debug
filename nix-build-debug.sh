@@ -508,6 +508,9 @@ echo "writing $bashrc_path"
         echo "PATH=${inherit_paths[$idx]@Q}:\"$PATH\""
     done
 
+    # add completions
+    echo 'complete -W "$phases" -o nosort runPhase'
+
     # envCommand is empty when "--command" and "--run" are not used
 
     if $chdir_build_root; then
