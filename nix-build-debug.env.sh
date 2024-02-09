@@ -351,10 +351,10 @@ EOF
     __echo_init_code
 
     # fix: do not know how to unpack source archive
-    echo "unpackCmdHooks+=(_defaultUnpack)"
+    #echo "unpackCmdHooks+=(_defaultUnpack)"
 
     # fix: default is $TMP but the build root is $PWD
-    echo "export NIX_BUILD_TOP=\"\$PWD\""
+    #echo "export NIX_BUILD_TOP=\"\$PWD\""
 
     # trap exit, both "exit 0" and "exit 1" (etc)
     # we need this to export state-changes from phase scripts to the current shell

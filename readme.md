@@ -53,12 +53,19 @@ still running
 ```
 
 `nix-build-debug` solves this problem
-by moving the build phases from bash functions to bash scripts
+by running the phase functions in subshells
 
-in these bash scripts,
+```sh
+runPhase() {
+  curPhase=$1
+  ( set -e; $curPhase ) # run $curPhase in subshell (...)
+}
+```
+
+in these subshells,
 there is `set -e` to stop the script on the first error.
-now, when a build phase fails, the bash script is terminated,
-but the debug shell keeps running
+now, when a build phase fails, the subshell is terminated,
+but the `runPhase` function keeps running, and the debug shell keeps running
 
 
 

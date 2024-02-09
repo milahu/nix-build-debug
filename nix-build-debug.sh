@@ -11,7 +11,25 @@
 
 
 
-this_dir=$(readlink -f "$(dirname "$0")")
+
+# FIXME installPhase
+# /nix/store/khndnv11g1rmzhzymm1s5dw7l2ld45bc-coreutils-9.4/bin/mkdir: cannot create directory '/nix/store/w8n571sip2rk5npakac9d2v11ilvl8lx-hello-2.12.1': Not a directory
+# maybe blame $prefix
+# still...
+# still prefix is wrong
+
+cat >/dev/null <<'EOF'
+declare -x NIX_LDFLAGS="-rpath /nix/store/w8n571sip2rk5npakac9d2v11ilvl8lx-hello-2.12.1/lib "
+declare -x configureFlags="--prefix=/nix/store/w8n571sip2rk5npakac9d2v11ilvl8lx-hello-2.12.1 "
+declare -- out_bak_nix_build_debug="/nix/store/w8n571sip2rk5npakac9d2v11ilvl8lx-hello-2.12.1"
+declare -- prefix="/nix/store/w8n571sip2rk5npakac9d2v11ilvl8lx-hello-2.12.1"
+EOF
+
+
+
+this_dir=$(readlink -f "${0%/*}")
+
+# TODO move to lib/get-env.sh
 
 # get-env.sh
 # based on https://github.com/NixOS/nix/blob/master/src/nix/get-env.sh
@@ -28,6 +46,7 @@ pure=false
 chdir_build_root=false
 debug=false
 debug2=false
+debug3=false
 
 # add some basic tools to make the shell more usable
 # TODO remove these extra paths in the phase scripts
@@ -57,6 +76,7 @@ while (( "$#" )); do
             shift 1
             ;;
         --debug)
+            if $debug2; then debug3=true; fi
             if $debug; then debug2=true; fi
             debug=true
             shift 1
@@ -248,6 +268,20 @@ echo "using builder ${builder@Q}" >&2
 
 
 
+if false; then
+env_path=$(echo "$env_json" | jq -r '.variables.PATH.value // empty')
+
+if [ -z "$env_path" ]; then
+    echo "error: empty path" >&2
+    exit 1
+fi
+
+$debug &&
+echo "env_path: ${env_path@Q}" >&2
+fi
+
+
+
 # get list of build phases
 
 # env.json: {"variables": {"prePhases": {"type": "exported", "value": "prePhaseTest1 prePhaseTest2"}}
@@ -255,6 +289,9 @@ echo "using builder ${builder@Q}" >&2
 
 # based on https://github.com/NixOS/nixpkgs/blob/master/pkgs/stdenv/generic/setup.sh
 # note: runPhase also checks variables like "dontBuild"
+
+# based on genericBuild
+# buildCommandPath and buildCommand take precedence
 
 phases=""
 
@@ -316,6 +353,124 @@ echo "phases_json_array: $phases_json_array" >&2
 
 
 
+# no. this fails to pass the bash environment to the phases
+# see also doc/bash-export-arrays.md
+# instead, run the phases in subshells like
+#   ( unpackPhase )
+# where "set -e" and "exit 1" will only exit the subshell
+
+if false; then
+
+# write phase scripts
+
+# based on genericBuild
+
+bin_dir="$debug_dir/bin"
+mkdir -p "$bin_dir"
+
+$debug &&
+echo "writing scripts to $bin_dir" >&2
+
+for phase in $phases; do
+
+    function_name=$phase
+
+    # get phase body
+    # based on genericBuild
+    if [ $phase = buildCommandPath ]; then
+        $debug2 &&
+        echo "phase ${phase@Q}: using phase body from env.variables" >&2
+        if false; then
+        phases=$phase
+        phase_body="source ${buildCommandPath@Q}"
+        else
+        phase=buildCommand
+        phases=$phase
+        phase_body=$(
+            echo "# based on ${buildCommandPath@Q}"
+            # this will change $BASH_SOURCE
+            # so we patch all references to $BASH_SOURCE
+            if ! grep -q -w BASH_SOURCE "$buildCommandPath"; then
+                cat "$buildCommandPath"
+            else
+                echo "__PATCHED_BASH_SOURCE=${buildCommandPath@Q}"
+                cat "$buildCommandPath" |
+                    sed -E 's/\$(\{)?BASH_SOURCE\b/$\1__PATCHED_BASH_SOURCE/g'
+                # test
+                # echo 'echo $BASH_SOURCE; echo ${BASH_SOURCE}; echo ${BASH_SOURCE%/*}; echo $BASH_SOURCE_not; '
+            fi
+        )
+        fi
+    elif [ $phase = buildCommand ]; then
+        $debug2 &&
+        echo "phase ${phase@Q}: using phase body from env.variables" >&2
+        phases=$phase
+        phase_body="$buildCommand"
+    else
+        # get phase body from string or function
+        phase_body=$(echo "$env_json" | jq -r ".variables.$phase.value // empty")
+        if [ -n "$phase_body" ]; then
+            function_name="${phase}_from_string"
+            $debug2 &&
+            echo "phase ${phase@Q}: using phase body from env.variables" >&2
+        else
+            phase_body=$(echo "$env_json" | jq -r ".bashFunctions.$phase // empty")
+            # dont overwrite the default phase function
+            # example: buildPhase_from_string
+            if [ -n "$phase_body" ]; then
+                $debug2 &&
+                echo "phase ${phase@Q}: using phase body from env.bashFunctions" >&2
+            fi
+        fi
+    fi
+    if [ -z "$phase_body" ]; then
+        echo "error: missing phase ${phase@Q}" >&2
+        exit 1
+    fi
+    $debug3 &&
+    echo "phase ${phase@Q}: phase body: $phase_body" >&2
+
+    script_path="$bin_dir/$phase.sh"
+
+    $debug &&
+    echo "phase ${phase@Q}: writing ${script_path@Q}" >&2
+
+    {
+        echo "#!$builder" # bash
+        #echo -n 'set -x; ' # debug .init-phase.sh
+        # FIXME bash: /dev/fd/.init-phase.sh: No such file or directory
+        # 0='bash'
+        # BASH_SOURCE='/dev/fd/63'
+        echo -n 'echo 0=${0@Q}; echo BASH_SOURCE=${BASH_SOURCE@Q}; ' # debug
+        echo -n 'source "${0%/*}"/../lib/.init-phase.sh; '
+        # TODO trap exit. dump all shell state: variables + history
+        echo -n '__goto_script_line "$1"; '
+        echo
+
+        #echo "$function_name() { $phase_body"$'\n}' # declare the function
+
+        # declare the function
+        echo "$function_name() {"
+        echo "################ $phase ################"
+        echo "$phase_body"
+        echo "}"
+
+        echo "set -e" # stop on error
+        echo "set -x" # trace all commands
+        echo "$function_name" # call the function
+
+    } >"$script_path"
+
+    chmod +x "$script_path"
+
+done
+
+fi
+
+
+
+# write variables
+
 variables_path="$debug_dir/etc/variables.sh"
 #variables_path="$debug_dir/var/variables.sh"
 #variables_path="$debug_dir/var/state.sh"
@@ -330,17 +485,13 @@ echo "writing $variables_path" >&2
         .variables | to_entries |
         map(select(
             (.key != "buildCommand")
-            #and
-            #(.key | test(".Phase$") == false)
+            and
+            (.key != "buildCommand_bak_nix_build_debug")
+            and
+            (.key != "buildCommandPath_bak_nix_build_debug")
             and
             (. as $val | '"$phases_json_array"' | index($val.key) == null)
         )) |
-        map(
-            if .key == "buildCommand_bak_nix_build_debug" then
-                { key: "buildCommand", value: .value }
-            else .
-            end
-        ) |
         .[] |
         if .value.type == "exported" then
             "export " + .key + "=" + (.value.value | @sh)
@@ -358,17 +509,67 @@ echo "writing $variables_path" >&2
             "# \(.key) has type \(.value.type)"
         end
     '
+
 } >"$variables_path"
 
 
 
+# write non-phase functions
+
+# write all stdenv functions to one file
+# in most cases, these are read-only
+# and creating many files is a waste of inodes
+
+functions_path="$debug_dir/lib/functions.sh"
+mkdir -p "${functions_path%/*}"
+
+$debug &&
+echo "writing $functions_path" >&2
+
+{
+    echo "$env_json" | jq -r '
+        .bashFunctions | to_entries |
+        map(select(
+            (.key != "runPhase")
+        ))
+        .[] |
+        .key + "() { " + .value + "\n}"
+    '
+
+} >"$functions_path"
+
+
+
+# write phase functions
+
+# !!! NO: write phase functions and stdenv functions
+# -> only phase functions
+# not stdenv functions
+
 lib_dir="$debug_dir/lib"
 mkdir -p "$lib_dir"
+
 $debug &&
 echo "writing functions to $lib_dir" >&2
+
 function_name_list=()
 
 while read function_name; do
+
+    is_phase=false
+    if [[ " $phases " == *" $function_name "* ]]; then
+        is_phase=true
+    fi
+
+    if ! $is_phase; then continue; fi
+
+    if false; then
+    if [[ " $phases " == *" $function_name "* ]]; then
+        $debug2 &&
+        echo "NOT writing function of phase $function_name" >&2
+        continue
+    fi
+    fi
 
     function_path="$lib_dir/$function_name.sh"
     function_name_list+=($function_name)
@@ -378,17 +579,32 @@ while read function_name; do
 
     {
         echo "$function_name() {"
+
+        if $is_phase; then
+            echo "################ $function_name ################"
+            # FIXME bash: /dev/fd/.init-phase.sh: No such file or directory
+            # 0='bash'
+            # BASH_SOURCE='/dev/fd/63'
+            echo -n 'echo 0=${0@Q}; echo BASH_SOURCE=${BASH_SOURCE@Q}; ' # debug
+            echo -n 'source "${BASH_SOURCE%/*}"/.init-phase.sh; '
+            # TODO trap exit. dump all shell state: variables + history --> runPhase
+            echo -n '__goto_script_line "$BASH_SOURCE" "$1"; '
+            echo
+        fi
+
         echo "$env_json" | jq -r ".bashFunctions.$function_name"
         echo
         echo "}"
+
     } >"$function_path"
 
 done < <(
-    # FIXME also use phase string variables as phase functions
     echo "$env_json" | jq -r '.bashFunctions | keys[]'
 )
 
 
+
+# write phase functions from strings
 
 for phase in $phases; do
 
@@ -416,19 +632,34 @@ for phase in $phases; do
 
     {
         echo "$function_name() {"
+
+        echo "################ $function_name ################"
+        # FIXME bash: /dev/fd/.init-phase.sh: No such file or directory
+        # 0='bash'
+        # BASH_SOURCE='/dev/fd/63'
+        echo -n 'echo 0=${0@Q}; echo BASH_SOURCE=${BASH_SOURCE@Q}; ' # debug
+        echo -n 'source "${BASH_SOURCE%/*}"/.init-phase.sh; '
+        # TODO trap exit. dump all shell state: variables + history --> runPhase
+        echo -n '__goto_script_line "$BASH_SOURCE" "$1"; '
+        echo
+
         echo "$function_body"
+        echo
         echo "}"
+
     } >"$function_path"
 
 done
 
 
 
+# TODO? store in ./lib/
 # patch the runPhase function
 #   eval "${!curPhase:-$curPhase}"
 # should be
 #   if declare -F ${curPhase}_from_string >/dev/null; then ${curPhase}_from_string; else $curPhase; fi
 
+if false; then
 function_path="$lib_dir"/runPhase.sh
 $debug &&
 echo "patching the runPhase function in ${function_path@Q} to call our \${curPhase}_from_string functions" >&2
@@ -436,6 +667,50 @@ sed_script='s/eval "${!curPhase:-$curPhase}";/'
 sed_script+='if declare -F ${curPhase}_from_string >\/dev\/null; then '
 sed_script+='${curPhase}_from_string; else $curPhase; fi/'
 sed -i "$sed_script" "$function_path"
+fi
+
+# copy from lib/runPhase.sh
+
+function_path="$lib_dir"/runPhase.sh
+
+if [ -e "$function_path" ]; then
+    function_path_bak="$function_path.bak"
+    $debug &&
+    echo "moving original runPhase function to ${function_path_bak@Q}" >&2
+    mv "$function_path" "$function_path_bak"
+fi
+
+$debug &&
+echo "writing patched runPhase function to ${function_path@Q}" >&2
+
+cp "$this_dir"/lib/stdenv-generic-runPhase.sh "$function_path"
+
+function_name_list+=(runPhase)
+
+
+
+# TODO also patch genericBuild? does it stop on error?
+
+
+
+# TODO add non-standard function setPhases
+# to set the global "phases" variable
+# which can be lost by running
+#   phases="somePhase" genericBuild
+
+
+
+# TODO genericBuild should accept command-line arguments
+# to select the build phases
+
+
+
+init_phase_path="$lib_dir"/.init-phase.sh
+
+$debug &&
+echo "writing init-phase.sh to ${init_phase_path@Q}"
+
+cp "$this_dir/lib/init-phase.sh" "$init_phase_path"
 
 
 
@@ -457,20 +732,34 @@ $debug &&
 echo "patching the output paths in ${variables_path@Q} so the builder does not write to the nix store" >&2
 sed_script=""
 is_first=true
+first_output_path=""
 for output in $outputs; do
     if $is_first; then
         output_path="$build_root/result"
+        first_output_path="$output_path"
         is_first=false
     else
         output_path="$build_root/result-$output"
+    fi
+    if [ -e "$output_path" ]; then
+        echo "error: output path exists: ${output_path@Q}" >&2
+        echo "hint:" >&2
+        echo "  rm -rf ${build_root@Q}/result*" >&2
+        exit 1
+        # FIXME fail earlier, before "getting the build environment"
     fi
     $debug &&
     echo "using output path ${output_path@Q}" >&2
     sed_script+="s|^export $output=|export $output=${output_path@Q}\n${output}_bak_nix_build_debug=|; "
 done
 
+# note: "prefix=..." not "export prefix=..."
+sed_script+="s|^prefix=|prefix=${first_output_path@Q}\nprefix_bak_nix_build_debug=|; "
+
 # env["NIX_BUILD_TOP"] = env["TMPDIR"] = env["TEMPDIR"] = env["TMP"] = env["TEMP"] = *tmp;
-nix_build_top_path="$build_root/build"
+# no. stay in the current workdir
+#nix_build_top_path="$build_root/build"
+nix_build_top_path="$build_root"
 for name in NIX_BUILD_TOP TMPDIR TEMPDIR TMP TEMP; do
     $debug &&
     echo "using $name path ${nix_build_top_path@Q}" >&2
@@ -497,11 +786,22 @@ echo "writing $bashrc_path"
 
     # TODO structuredAttrsRC
 
+    # TODO? source lib/.all_functions.sh from lib/.init-phase.sh
+
     #echo "[ -e \"$stdenv_setup\" ] && source \"$stdenv_setup\""
+
     echo "source ${variables_path@Q}"
+
+    functions_path="$debug_dir/lib/functions.sh"
+    echo "source ${functions_path@Q}"
+
+    # phase functions
     for function_name in ${function_name_list[@]}; do
         function_path="$lib_dir/$function_name.sh"
         echo "source ${function_path@Q}"
+        # non-standard
+        # make functions available to phase scripts
+        echo "export -f $function_name"
     done
 
     if ! $pure; then
@@ -543,16 +843,26 @@ echo "writing $bashrc_path"
         echo "export TZ=${TZ@Q}"
     fi
 
+    echo "export GZIP_NO_TIMESTAMPS=1"
+
+    # TODO what?
     echo "shopt -s execfail"
+
+    # fix: syntax error near unexpected token `('
+    echo "shopt -s extglob"
 
     # the $phases variable is set in nix-build, but not in nix-shell
     echo "phases=${phases@Q}"
 
+    #echo "PATH=${env_path@Q}"
     # prepend paths in reverse order to $PATH
     # so the first path in inherit_paths has the highest priority
     for ((idx = ${#inherit_paths[@]} - 1; idx >= 0; idx--)); do
-        echo "PATH=${inherit_paths[$idx]@Q}:\"$PATH\""
+        echo "PATH=${inherit_paths[$idx]@Q}:\"\$PATH\""
     done
+    #echo "export PATH"
+    $debug &&
+    echo 'echo bashrc: PATH=${PATH@Q}'
 
     # add completions
     echo 'complete -W "$phases" -o nosort runPhase'
@@ -566,7 +876,7 @@ echo "writing $bashrc_path"
     #echo "echo 'starting the nix-build-debug shell'"
     #echo "echo 'next steps:'"
     #echo "echo '  nix-build-debug help'"
-    echo "echo 'hint: nix-build-debug help'"
+    echo "echo 'hint: runPhase [TAB][TAB]'"
 
 } >"$bashrc_path"
 
