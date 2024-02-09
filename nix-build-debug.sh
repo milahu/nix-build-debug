@@ -29,6 +29,19 @@ chdir_build_root=false
 debug=false
 debug2=false
 
+# add some basic tools to make the shell more usable
+# TODO remove these extra paths in the phase scripts
+# TODO expose CLI option
+inherit_tools=(
+    $PAGER # less
+    $EDITOR # nano
+    # TODO more
+)
+
+# TODO expose CLI option
+inherit_paths=(
+)
+
 while (( "$#" )); do
     #echo "arg: ${1@Q}"
     case "$1" in
@@ -93,6 +106,22 @@ if ! is_clean_path "$build_root"; then
     echo "by default, the build will run in the current workdir" >&2
     exit 1
 fi
+
+
+
+for tool in "${inherit_tools[@]}"; do
+    if ! tool_path=$(command -v "$tool"); then
+        $debug &&
+        echo "adding tool ${tool@Q} failed: not found in \$PATH" >&2
+        continue
+    fi
+    $debug &&
+    echo "adding tool ${tool@Q} from tool_path ${tool_path@Q}" >&2
+    # resolve /run/current-system/sw/bin/* to /nix/store/*/bin/*
+    tool_path=$(readlink -f "$tool_path")
+    tool_path="${tool_path%/*}"
+    inherit_paths+=("$tool_path")
+done
 
 
 
@@ -469,6 +498,12 @@ echo "writing $bashrc_path"
     fi
 
     echo "shopt -s execfail"
+
+    # prepend paths in reverse order to $PATH
+    # so the first path in inherit_paths has the highest priority
+    for ((idx = ${#inherit_paths[@]} - 1; idx >= 0; idx--)); do
+        echo "PATH=${inherit_paths[$idx]@Q}:\"$PATH\""
+    done
 
     # envCommand is empty when "--command" and "--run" are not used
 
