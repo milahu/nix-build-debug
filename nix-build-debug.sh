@@ -247,8 +247,25 @@ echo "using builder ${builder@Q}" >&2
 # based on https://github.com/NixOS/nixpkgs/blob/master/pkgs/stdenv/generic/setup.sh
 # note: runPhase also checks variables like "dontBuild"
 
-phases=$(echo $(
-    echo "$env_json" | jq -r '
+phases=""
+
+buildCommandPath=$(echo "$env_json" | jq -r '.variables.buildCommandPath_bak_nix_build_debug.value // empty')
+buildCommand=""
+
+if [ -f "${buildCommandPath:-}" ]; then
+    # non-standard. later changed to buildCommand
+    phases="buildCommandPath"
+else
+    buildCommand=$(echo "$env_json" | jq -r '.variables.buildCommand_bak_nix_build_debug.value // empty')
+fi
+
+if [ -z "$phases" ] && [ -n "${buildCommand:-}" ]; then
+    # non-standard
+    phases="buildCommand"
+fi
+
+if [ -z "$phases" ]; then
+    phases=$(echo $(echo "$env_json" | jq -r '
         .variables |
         [
             .prePhases.value,
@@ -265,8 +282,8 @@ phases=$(echo $(
         ] |
         map(select(. != null)) |
         .[]
-    '
-))
+    '))
+fi
 
 # test
 #phases='badPhase!#/{}[]+-" buildPhase'
