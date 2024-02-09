@@ -156,6 +156,8 @@ nix_build_env_expr=$(
 
     # create backup of buildCommand
     echo "  buildCommand_bak_nix_build_debug ="
+    # test
+    #echo "    let oldAttrs = { buildCommand = ''echo hello im a string buildCommand''; }; in"
     echo "    if oldAttrs ? buildCommand then oldAttrs.buildCommand"
     echo "    else null;"
 
