@@ -499,6 +499,9 @@ echo "writing $bashrc_path"
 
     echo "shopt -s execfail"
 
+    # the $phases variable is set in nix-build, but not in nix-shell
+    echo "phases=${phases@Q}"
+
     # prepend paths in reverse order to $PATH
     # so the first path in inherit_paths has the highest priority
     for ((idx = ${#inherit_paths[@]} - 1; idx >= 0; idx--)); do
