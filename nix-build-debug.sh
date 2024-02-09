@@ -261,14 +261,14 @@ phases=""
 buildCommandPath=$(echo "$env_json" | jq -r '.variables.buildCommandPath_bak_nix_build_debug.value // empty')
 buildCommand=""
 
-if [ -f "${buildCommandPath:-}" ]; then
-    # non-standard. later changed to buildCommand
+if [ -f "$buildCommandPath" ]; then
+    # non-standard
     phases="buildCommandPath"
 else
     buildCommand=$(echo "$env_json" | jq -r '.variables.buildCommand_bak_nix_build_debug.value // empty')
 fi
 
-if [ -z "$phases" ] && [ -n "${buildCommand:-}" ]; then
+if [ -z "$phases" ] && [ -n "$buildCommand" ]; then
     # non-standard
     phases="buildCommand"
 fi
