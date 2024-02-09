@@ -14,6 +14,66 @@ early draft. not functional. not usable
 
 
 
+## why
+
+using `nix-shell` to debug a failing nix build is not ideal
+
+
+
+### stop on error
+
+`nix-build` runs the build as a bash script with `set -e`
+so the build stops on the first error
+
+`nix-shell` starts an interactive bash shell with `set +e`
+so that errors dont exit the shell.
+but with `set +e`, the build does not stop on the first error,
+and continues to execute commands after the error
+
+example
+
+```console
+$ nix_expr='
+  with import <nixpkgs> {};
+  stdenv.mkDerivation {
+    name = "x";
+    buildCommand = "echo buildCommand; false; echo still running";
+  }
+'
+
+$ nix-build -E "$nix_expr"
+buildCommand
+error: builder for '/nix/store/29zpgfmmsvf81m49piy26daxljpnli0s-x.drv' failed with exit code 1;
+
+$ nix-shell -E "$nix_expr"
+$ runPhase buildCommand
+Running phase: buildCommand
+buildCommand
+still running
+```
+
+`nix-build-debug` solves this problem
+by moving the build phases from bash functions to bash scripts
+
+in these bash scripts,
+there is `set -e` to stop the script on the first error.
+now, when a build phase fails, the bash script is terminated,
+but the debug shell keeps running
+
+
+
+### continue running
+
+`nix-build-debug` also allows to
+continue running a build phase from a certain line in the build phase
+
+example:
+the `buildPhase` fails on a command on line 10.
+now we can modify the `buildPhase.sh` script
+and continue running the `buildPhase` from line 10
+
+
+
 ## usage
 
 
