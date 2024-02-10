@@ -825,6 +825,16 @@ echo "writing $bashrc_path"
     # "set -e" is used in the phase scripts, to stop on error
     echo "set +e"
 
+    # disable job control in the debug shell
+    # see doc/bash-trap-exit-try-catch.md
+    # "set +m" has no effect here in bashrc
+    # also "$shell +m" has no effect
+    # -> use a patched version of bash
+    #echo "set +m"
+    # no. this would disable job control also for the parent shell
+    # so Ctrl-Z would not work at all
+    #echo "stty susp undef"
+
     echo 'if [ -n "$PS1" -a -z "$NIX_SHELL_PRESERVE_PROMPT" ]; then'
     prompt_color="1;31m"
     ((UID)) && prompt_color="1;32m"
@@ -886,7 +896,26 @@ shell="$NIX_BUILD_SHELL"
 if [ -z "$shell" ]; then
     # $builder is a non-interactive bash shell
     # which is painful to use for humans
-    if shellDrv=$(nix-build '<nixpkgs>' -A bashInteractive); then
+
+    nix_expr='with import <nixpkgs> {}; bashInteractive'
+
+    # use a patched version of bash
+    # disable job control in the debug shell
+    # with this, Ctrl-Z will stop the debug shell
+    # and return to the parent shell
+    # see also nixpkgs/pkgs/shells/bash/5.nix
+    nix_expr+=$(
+        echo '.overrideAttrs (oldAttrs: {'
+        echo '  configureFlags = oldAttrs.configureFlags ++ ['
+        echo '    "--disable-job-control"'
+        echo '  ];'
+        echo '})'
+    )
+
+    $debug &&
+    echo "getting interactive bash shell" >&2
+
+    if shellDrv=$(nix-build -E "$nix_expr"); then
         shell="$shellDrv/bin/bash"
     else
         echo "notice: will use bash from your environment" >&2
