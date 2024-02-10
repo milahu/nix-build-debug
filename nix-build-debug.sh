@@ -27,7 +27,8 @@ EOF
 
 
 
-this_dir=$(readlink -f "${0%/*}")
+this_dir=$(readlink -f "$0")
+this_dir="${this_dir%/*}"
 
 # TODO move to lib/get-env.sh
 
