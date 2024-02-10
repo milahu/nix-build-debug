@@ -1,0 +1,7 @@
+move get-env.sh to lib/get-env.sh
+
+set -x
+test $PS4
+
+test continue phase from line N
+runPhase buildPhase 1234
