@@ -122,6 +122,8 @@ try
 catch
   rc=$? # get the return code 1 from "exit 1"
   echo got return code $rc
+finally
+  echo cleanup # this always runs
 done
 
 echo continuing the main script
