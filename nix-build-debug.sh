@@ -226,7 +226,7 @@ $debug &&
 echo "getting the build environment ..." >&2
 
 # this takes some seconds
-nix_build_out=$(nix-build -E "$nix_build_env_expr" 2>&1 | tee -a /dev/stderr)
+nix_build_out=$(nix-build -E "$nix_build_env_expr" 2>&1)
 
 # extract json from build output
 env_json=$(echo "$nix_build_out" | awk "/^$env_json_start$/{flag=1; next} /^$env_json_end$/{flag=0} flag")
