@@ -916,7 +916,7 @@ if [ -z "$shell" ]; then
     $debug &&
     echo "getting interactive bash shell" >&2
 
-    if shellDrv=$(nix-build -E "$nix_expr"); then
+    if shellDrv=$(nix-build -E "$nix_expr" --no-out-link); then
         shell="$shellDrv/bin/bash"
     else
         echo "notice: will use bash from your environment" >&2
