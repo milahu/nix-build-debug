@@ -10,7 +10,23 @@ debug nix-build in a nix-shell
 
 ## status
 
-early draft. not functional. not usable
+working prototype
+
+what works
+
+- start a debug shell, for example `nix-build-debug '<nixpkgs>' -A hello`
+- use the `runPhase` function to run phases, for example `runPhase unpackPhase`
+- auto-completion for the `runPhase` function.
+  with `runPhase [Tab][Tab]` all build phases are listed in order
+- stop and continue calls to the `runPhase` function.
+  this works by using a `bash` compiled with `--disable-job-control`.
+  sending Ctrl-Z (SIGTSTP) to `runPhase` will stop the whole debug shell.
+  see also [doc/bash-trap-exit-try-catch.md](doc/bash-trap-exit-try-catch.md)
+
+what is not tested
+
+- continue phase from line N.
+  example: `runPhase buildPhase 123` to continue `buildPhase` from line 123
 
 
 
