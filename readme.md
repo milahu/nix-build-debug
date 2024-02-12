@@ -101,81 +101,47 @@ and continue running the `buildPhase` from line 10
 
 
 
-### start a nix-shell
+### start shell
 
 ```
-nix-shell '<nixpkgs>' -A some-package
-```
-
-or
-
-```
-nix-shell -E 'with import <nixpkgs> {}; callPackage ./default.nix {}'
+nix-build-debug '<nixpkgs>' -A hello
 ```
 
 
 
-### source this script
+### list phases
 
 ```
-source /path/to/nix-build-debug.sh
+runPhase [Tab][Tab]
 ```
-
-running the script fails  
-because bash functions like makeWrapper are missing
 
 
 
 ### run phases
 
 ```
-ls nix*
-./nix.00*
-./nix.01*
-./nix.02*
+runPhase unpackPhase
+runPhase configurePhase
+runPhase buildPhase
+runPhase installPhase
 ```
+
+`installPhase` will install the build result in `$NIX_BUILD_TOP/result*`
 
 
 
 ### continue running a phase
 
-when a phase fails, fix the phase script in nix.*.sh  
+when a phase fails, fix the phase script
+
+```
+nano $NIX_BUILD_TOP/.nix-build-debug/lib/buildPhase.sh
+```
+
 then continue running the phase, for example from line 123
 
 ```
-./nix.02* 123
-```
-
-the build result will be installed to result-out/ etc
-
-
-
-## example
-
-```
-$ mkdir test && cd test
-
-$ nix-shell '<nixpkgs>' -A hello
-
-$ source ../nix-build-debug.sh
-writing nix.00.unpackPhase.sh
-writing nix.01.patchPhase.sh
-writing nix.02.updateAutotoolsGnuConfigScriptsPhase.sh
-writing nix.03.configurePhase.sh
-writing nix.04.buildPhase.sh
-writing nix.05.checkPhase.sh
-writing nix.06.installPhase.sh
-writing nix.07.fixupPhase.sh
-writing nix.08.installCheckPhase.sh
-writing nix.09.distPhase.sh
-
-$ ./nix.00*
-
-$ ./nix.01*
-
-$ ./nix.02*
-
-$ ./nix.03*
+runPhase buildPhase 123
 ```
 
 
