@@ -4,7 +4,7 @@ debug nix-build in a nix-shell
 
 - run the build phases explicitly
 - modify the build phases (they are stored in *.sh files)
-- continue running build phases from specified line number
+- continue running build phases from a specified line number
 
 
 
@@ -44,7 +44,7 @@ so the build stops on the first error
 `nix-shell` starts an interactive bash shell with `set +e`
 so that errors dont exit the shell.
 but with `set +e`, the build does not stop on the first error,
-and continues to execute commands after the error
+and continues executing commands after the error
 
 example
 
