@@ -55,6 +55,7 @@ debug3=false
 inherit_tools=(
     $PAGER # less
     $EDITOR # nano
+    git
     # TODO more
 )
 
