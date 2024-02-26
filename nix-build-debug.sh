@@ -492,6 +492,8 @@ echo "writing $variables_path" >&2
             and
             (.key != "buildCommandPath_bak_nix_build_debug")
             and
+            (.key != "HOME")
+            and
             (. as $val | '"$phases_json_array"' | index($val.key) == null)
         )) |
         .[] |
