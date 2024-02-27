@@ -11,22 +11,6 @@
 
 
 
-
-# FIXME installPhase
-# /nix/store/khndnv11g1rmzhzymm1s5dw7l2ld45bc-coreutils-9.4/bin/mkdir: cannot create directory '/nix/store/w8n571sip2rk5npakac9d2v11ilvl8lx-hello-2.12.1': Not a directory
-# maybe blame $prefix
-# still...
-# still prefix is wrong
-
-cat >/dev/null <<'EOF'
-declare -x NIX_LDFLAGS="-rpath /nix/store/w8n571sip2rk5npakac9d2v11ilvl8lx-hello-2.12.1/lib "
-declare -x configureFlags="--prefix=/nix/store/w8n571sip2rk5npakac9d2v11ilvl8lx-hello-2.12.1 "
-declare -- out_bak_nix_build_debug="/nix/store/w8n571sip2rk5npakac9d2v11ilvl8lx-hello-2.12.1"
-declare -- prefix="/nix/store/w8n571sip2rk5npakac9d2v11ilvl8lx-hello-2.12.1"
-EOF
-
-
-
 this_dir=$(readlink -f "$0")
 this_dir="${this_dir%/*}"
 
