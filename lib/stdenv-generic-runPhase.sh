@@ -1,3 +1,21 @@
+__showPhaseFooterError() {
+    # based on showPhaseFooter
+    local phase="$1";
+    local startTime="$2";
+    local endTime="$3";
+    local rc="$4";
+    local delta=$(( endTime - startTime ));
+    # no. always show the phase footer
+    #(( delta < 30 )) && return;
+    local H=$((delta/3600));
+    local M=$((delta%3600/60));
+    local S=$((delta%60));
+    echo -n "$phase failed with status $rc in ";
+    (( H > 0 )) && echo -n "$H hours ";
+    (( M > 0 )) && echo -n "$M minutes ";
+    echo "$S seconds"
+}
+
 runPhase() {
     #local curPhase="$*"
     local curPhase="$1"; shift
@@ -28,44 +46,52 @@ runPhase() {
     # Evaluate the variable named $curPhase if it exists, otherwise the
     # function named $curPhase.
     #eval "${!curPhase:-$curPhase}"
+
     #if declare -F ${curPhase}_from_string >/dev/null; then ${curPhase}_from_string; else $curPhase; fi
-    subshell_id=$(date +$$.%s.%N)
-    # FIXME Ctrl-Z breaks this. Ctrl-Z only suspends the subshell, and the runPhase function continues running
+
+    subshell_temp=$(mktemp -u -t $([ -d /run/user/$UID ] && echo "-p/run/user/$UID") shell.$$.subshell.XXXXXXXXXX)
+    #subshell_id=${subshell_temp##*.}
+
+    # run the phase function in a subshell to catch exit
+    # aka: try/catch in bash
+
+    # Ctrl-Z breaks this. Ctrl-Z only suspends the subshell, and the runPhase function continues running
+    # fixed by using bash with disable-job-control
+
+    #echo "# runPhase: starting subshell"
+
     (
-        echo $$ >/run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.pid
-        echo "subshell start. env=/run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.env.1.sh"
-        { declare -p; declare -p -f; } >/run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.env.1.sh
-        echo "$PWD" >/run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.cwd.1.txt
+        #echo "# runPhase subshell: running $curPhase"
+        __handle_exit() {
+            # this is always reached, success or error
+            rc=$?
+            unset __handle_exit
+            # return new state to parent shell
+            { declare -p; declare -p -f; } >$subshell_temp.env.2.sh
+            echo -n "$PWD" >$subshell_temp.cwd.2.txt
+        }
+        trap __handle_exit EXIT
+        trap __handle_exit ERR
+
+        if false; then
+        # save current state
+        { declare -p; declare -p -f; } >$subshell_temp.env.1.sh
+        echo -n "$PWD" >$subshell_temp.cwd.1.txt
+        fi
+
         local rc=
         if declare -F ${curPhase}_from_string >/dev/null; then
             ${curPhase}_from_string "$@"
-            rc=$?
+            exit $?
         else
             $curPhase "$@"
-            rc=$?
+            exit $?
         fi
-        echo "subshell end. rc=$rc. sourceRoot=${sourceRoot@Q}. cwd=$PWD. env=/run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.env.2.sh"
-        # return state-changes to parent shell
-        # FIXME trap exit
-        { declare -p; declare -p -f; } >/run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.env.2.sh
-        echo "$PWD" >/run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.cwd.2.txt
     )
-    # WONTFIX? bash job control is too verbose
-    # also, this does not allow Ctrl-Z to pause the build phase
-    #) & wait $!
 
-    # wait for the subshell to finish
-    # this is needed to fix bash job control (Ctrl-Z; jobs; fg)
-    subshell_pid=$(</run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.pid)
-    echo "runPhase: parent shell $$ is waiting for subshell $subshell_pid" >&2
-    # FIXME bash: wait: pid 590811 is not a child of this shell
-    # WONTFIX? both shells have the same PID: $$ == $subshell_pid
-    #wait $(</run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.pid)
+    rc=$?
 
     # import env from subshell
-    # declare -g: create global variables when used in a shell function
-    #source /run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.env.2.sh
-    #source <(sed 's/^declare -/declare -g -/' /run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.env.2.sh)
     # dont update some global variables
     # foremost, dont update SHELLOPTS to avoid "set -e"
     # declare -ar BASH_VERSINFO=(...)
@@ -75,12 +101,12 @@ runPhase() {
     # declare -ir PPID="556440"
     # declare -ir UID="1000"
 
-    source <(sed -E '/^declare -[-aAilnrtux]+ (_|SHELLOPTS|BASHOPTS|BASH_VERSINFO|EUID|PPID|UID)=/d; s/^declare -/declare -g -/' /run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.env.2.sh)
+    source <(sed -E '/^declare -[-aAilnrtux]+ (_|SHELLOPTS|BASHOPTS|BASH_VERSINFO|SHLVL|EUID|PPID|UID)=/d; s/^declare -/declare -g -/' $subshell_temp.env.2.sh)
 
     # change workdir
-    cd "$(</run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.cwd.2.txt)"
+    cd "$(<$subshell_temp.cwd.2.txt)"
 
-    rm /run/user/$(id -u)/nix-build-debug.subshell.$subshell_id.*
+    rm $subshell_temp.*
 
     # TODO on success, add the phase name to $donePhases (non-standard)
 
@@ -92,6 +118,12 @@ runPhase() {
     # unpacker appears to have produced no directories
 
     local endTime=$(date +"%s")
+
+    if [[ "$rc" != 0 ]]; then
+      # test: buildPhase () { echo test exit 1; exit 1; }
+      __showPhaseFooterError "$curPhase" "$startTime" "$endTime" "$rc"
+      return $rc
+    fi
 
     showPhaseFooter "$curPhase" "$startTime" "$endTime"
 
