@@ -806,8 +806,8 @@ echo "writing $bashrc_path"
     done
 
     if ! $pure; then
-        echo "[ -n \"\$PS1\" ] && [ -e ~/.bashrc ] && source ~/.bashrc"
         echo "p=\"\$PATH\""
+        echo "[ -n \"\$PS1\" ] && [ -e ~/.bashrc ] && source ~/.bashrc"
     fi
 
     if ! $pure; then
