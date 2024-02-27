@@ -429,7 +429,15 @@ echo "writing $functions_path" >&2
             (.key != "runPhase")
         ))
         .[] |
-        .key + "() { " + .value + "\n}"
+        .key + "() { " + (
+            if .key == "showPhaseFooter" then
+            # always show the phase footer
+            # remove "(( delta < 30 )) && return;"
+            .value | sub("\\(\\( delta < 30 \\)\\) && return;"; "")
+            else
+            .value
+            end
+        ) + "\n}"
     '
 
 } >"$functions_path"
