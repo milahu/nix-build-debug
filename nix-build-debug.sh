@@ -55,7 +55,9 @@ debug3=false
 inherit_tools=(
     $PAGER # less
     $EDITOR # nano
+    curl
     git
+    realpath # coreutils-full
     # TODO more
 )
 
