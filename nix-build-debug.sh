@@ -42,6 +42,7 @@ inherit_tools=(
     curl
     git
     realpath # coreutils-full
+    man
     # TODO more
 )
 
