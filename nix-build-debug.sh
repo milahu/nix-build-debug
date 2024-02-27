@@ -803,9 +803,6 @@ echo "writing $bashrc_path"
     for function_name in ${function_name_list[@]}; do
         function_path="$lib_dir/$function_name.sh"
         echo "source ${function_path@Q}"
-        # non-standard
-        # make functions available to phase scripts
-        echo "export -f $function_name"
     done
 
     if ! $pure; then
