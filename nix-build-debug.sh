@@ -63,6 +63,21 @@ inherit_tools=(
 inherit_paths=(
 )
 
+inherit_envs=(
+    # dont use HOME=/homeless-shelter
+    HOME
+    # fix: git clone: OpenSSL/3.0.12: error:16000069:STORE routines::unregistered scheme
+    # usually these are unset in nix-build because builds run offline
+    # /etc/ssl/certs/ca-bundle.crt from pkgs.cacert
+    CURL_CA_BUNDLE
+    SSL_CERT_FILE
+)
+
+ignore_envs=(
+    # dont use NIX_SSL_CERT_FILE=/no-cert-file.crt
+    NIX_SSL_CERT_FILE
+)
+
 while (( "$#" )); do
     #echo "arg: ${1@Q}"
     case "$1" in
@@ -128,6 +143,22 @@ if ! is_clean_path "$build_root"; then
     echo "by default, the build will run in the current workdir" >&2
     exit 1
 fi
+
+
+
+function get_json_array() {
+    # ideally use jq: jq -c -n '[$v1, $v2]' --arg v1 aa --arg v2 bb
+    # but here we have only simple strings, no special chars
+    local -n bash_array="$1"
+    local res=""
+    res="["
+    # TODO check if bash_array is array or string
+    for str in "${bash_array[@]}"; do
+        res+="\"$str\","
+    done
+    res="${res:0: -1}]"
+    echo -n "$res"
+}
 
 
 
@@ -370,6 +401,10 @@ variables_path="$debug_dir/etc/variables.sh"
 #variables_path="$debug_dir/var/state.sh"
 mkdir -p "${variables_path%/*}"
 
+ignore_envs_json_array=$(get_json_array ignore_envs)
+$debug &&
+echo "ignore_envs_json_array: $ignore_envs_json_array"
+
 $debug &&
 echo "writing $variables_path" >&2
 
@@ -384,7 +419,7 @@ echo "writing $variables_path" >&2
             and
             (.key != "buildCommandPath_bak_nix_build_debug")
             and
-            (.key != "HOME")
+            (. as $val | '"$ignore_envs_json_array"' | index($val.key) == null)
             and
             (. as $val | '"$phases_json_array"' | index($val.key) == null)
         )) |
@@ -732,6 +767,11 @@ echo "writing $bashrc_path"
     if [ -n "$TZ" ]; then
         echo "export TZ=${TZ@Q}"
     fi
+
+    for key in ${inherit_envs[@]}; do
+        val=${!key}
+        echo "export $key=${val@Q}"
+    done
 
     echo "export GZIP_NO_TIMESTAMPS=1"
 
