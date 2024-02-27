@@ -796,6 +796,9 @@ echo "writing $bashrc_path"
 
     echo "source ${variables_path@Q}"
 
+    # non-standard: set default sourceRoot=.
+    echo '[ -z "$sourceRoot" ] && sourceRoot=.'
+
     functions_path="$debug_dir/lib/functions.sh"
     echo "source ${functions_path@Q}"
 
