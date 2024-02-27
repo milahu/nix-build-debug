@@ -763,6 +763,14 @@ echo "writing $bashrc_path"
 
     echo "export GZIP_NO_TIMESTAMPS=1"
 
+    for cmd in jobs fg bg; do
+        echo "function $cmd() {"
+        echo "    echo '$cmd: command not found' >&2"
+        echo "    echo 'note: this shell has no job control, because SIGTSTP (Ctrl-Z) would break subshells' >&2"
+        echo "    return 127"
+        echo "}"
+    done
+
     # TODO what?
     echo "shopt -s execfail"
 
