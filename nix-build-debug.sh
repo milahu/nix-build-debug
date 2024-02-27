@@ -444,6 +444,8 @@ echo "writing $functions_path" >&2
 
 
 
+# TODO refactor writing phase functions
+
 # write phase functions
 
 # !!! NO: write phase functions and stdenv functions
@@ -454,7 +456,7 @@ lib_dir="$debug_dir/lib"
 mkdir -p "$lib_dir"
 
 $debug &&
-echo "writing functions to $lib_dir" >&2
+echo "writing phase functions to $lib_dir" >&2
 
 function_name_list=()
 
@@ -465,15 +467,7 @@ while read function_name; do
         is_phase=true
     fi
 
-    if ! $is_phase; then continue; fi
-
-    if false; then
-    if [[ " $phases " == *" $function_name "* ]]; then
-        $debug2 &&
-        echo "NOT writing function of phase $function_name" >&2
-        continue
-    fi
-    fi
+    $is_phase || continue
 
     function_path="$lib_dir/$function_name.sh"
     function_name_list+=($function_name)
@@ -483,19 +477,9 @@ while read function_name; do
 
     {
         echo "$function_name() {"
-
-        if $is_phase; then
-            echo "################ $function_name ################"
-            # FIXME bash: /dev/fd/.init-phase.sh: No such file or directory
-            # 0='bash'
-            # BASH_SOURCE='/dev/fd/63'
-            echo -n 'echo 0=${0@Q}; echo BASH_SOURCE=${BASH_SOURCE@Q}; ' # debug
-            echo -n 'source "${BASH_SOURCE%/*}"/.init-phase.sh; '
-            # TODO trap exit. dump all shell state: variables + history --> runPhase
-            echo -n '__goto_script_line "$BASH_SOURCE" "$1"; '
-            echo
-        fi
-
+        echo 'source "$__NIX_BUILD_DEBUG_DIR"/lib/.init-phase.sh'
+        echo '__goto_script_line "$1"'
+        echo "################ $function_name ################"
         echo "$env_json" | jq -r ".bashFunctions.$function_name"
         echo
         echo "}"
@@ -507,6 +491,8 @@ done < <(
 )
 
 
+
+# TODO refactor writing phase functions
 
 # write phase functions from strings
 
@@ -536,17 +522,9 @@ for phase in $phases; do
 
     {
         echo "$function_name() {"
-
+        echo 'source "$__NIX_BUILD_DEBUG_DIR"/lib/.init-phase.sh'
+        echo '__goto_script_line "$1"'
         echo "################ $function_name ################"
-        # FIXME bash: /dev/fd/.init-phase.sh: No such file or directory
-        # 0='bash'
-        # BASH_SOURCE='/dev/fd/63'
-        echo -n 'echo 0=${0@Q}; echo BASH_SOURCE=${BASH_SOURCE@Q}; ' # debug
-        echo -n 'source "${BASH_SOURCE%/*}"/.init-phase.sh; '
-        # TODO trap exit. dump all shell state: variables + history --> runPhase
-        echo -n '__goto_script_line "$BASH_SOURCE" "$1"; '
-        echo
-
         echo "$function_body"
         echo
         echo "}"
@@ -784,6 +762,8 @@ echo "writing $bashrc_path"
     if $chdir_build_root; then
         echo "cd ${build_root@Q}"
     fi
+
+    echo "export __NIX_BUILD_DEBUG_DIR=${debug_dir@Q}"
 
     #echo "echo 'starting the nix-build-debug shell'"
     #echo "echo 'next steps:'"
