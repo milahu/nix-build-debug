@@ -806,18 +806,18 @@ echo "writing $bashrc_path"
     done
 
     if ! $pure; then
-        echo "p=\"\$PATH\""
-        echo "[ -n \"\$PS1\" ] && [ -e ~/.bashrc ] && source ~/.bashrc"
-    fi
-
-    if ! $pure; then
-        echo 'PATH="$PATH:$p"'
-        echo "unset p"
+        echo '# impure shell: load ~/.bashrc'
+        echo 'if [ -n "$PS1" ] && [ -e ~/.bashrc ]; then'
+        echo '  p="$PATH"'
+        echo '  source ~/.bashrc'
+        echo '  PATH="$PATH:$p"' # TODO dedupe path
+        echo "  unset p"
+        echo 'fi'
     fi
 
     shell_dir=$(dirname "$shell")
     if [[ "$shell_dir" != "." ]]; then
-        echo "PATH=${shell_dir@Q}:\"\$PATH\""
+        echo "PATH=${shell_dir@Q}"':"$PATH"'
     fi
     echo "SHELL=${shell@Q}"
     echo "BASH=${shell@Q}"
