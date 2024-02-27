@@ -638,11 +638,9 @@ for output in $outputs; do
         output_path="$build_root/result-$output"
     fi
     if [ -e "$output_path" ]; then
-        echo "error: output path exists: ${output_path@Q}" >&2
+        echo "warning: output path exists: ${output_path@Q}" >&2
         echo "hint:" >&2
         echo "  rm -rf ${build_root@Q}/result*" >&2
-        exit 1
-        # FIXME fail earlier, before "getting the build environment"
     fi
     $debug &&
     echo "using output path ${output_path@Q}" >&2
