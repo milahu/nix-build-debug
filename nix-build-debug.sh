@@ -773,6 +773,8 @@ echo "writing $bashrc_path"
         echo "export $key=${val@Q}"
     done
 
+    echo "export SHELL=${shell@Q}"
+
     echo "export GZIP_NO_TIMESTAMPS=1"
 
     # TODO what?
