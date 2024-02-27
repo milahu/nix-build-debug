@@ -6,6 +6,6 @@ test $PS4
 test continue phase from line N
 runPhase buildPhase 1234
 
-trap exit inside the runPhase subshell
-and export/import environment
-from subshell to the debug shell
+inherit completions from shell
+example:
+  git [TAB]
