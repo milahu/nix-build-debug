@@ -43,6 +43,7 @@ inherit_tools=(
     git
     realpath # coreutils-full
     man
+    clear # ncurses
     # TODO more
 )
 
