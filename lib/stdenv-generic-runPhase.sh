@@ -65,6 +65,7 @@ runPhase() {
         __handle_exit() {
             # this is always reached, success or error
             rc=$?
+            set +x # disable xtrace
             unset __handle_exit
             # return new state to parent shell
             { declare -p; declare -p -f; } >$subshell_temp.env.2.sh
@@ -73,11 +74,9 @@ runPhase() {
         trap __handle_exit EXIT
         trap __handle_exit ERR
 
-        if false; then
         # save current state
         { declare -p; declare -p -f; } >$subshell_temp.env.1.sh
         echo -n "$PWD" >$subshell_temp.cwd.1.txt
-        fi
 
         local rc=
         if declare -F ${curPhase}_from_string >/dev/null; then
@@ -90,6 +89,8 @@ runPhase() {
     )
 
     rc=$?
+
+    set +x # disable xtrace
 
     # import env from subshell
     # dont update some global variables
@@ -105,6 +106,11 @@ runPhase() {
 
     # change workdir
     cd "$(<$subshell_temp.cwd.2.txt)"
+
+    xtrace_was_on=false
+    if cat $subshell_temp.env.1.sh | grep -m1 '^declare -r SHELLOPTS=' | grep -q -w xtrace; then
+        xtrace_was_on=true
+    fi
 
     rm $subshell_temp.*
 
@@ -122,6 +128,7 @@ runPhase() {
     if [[ "$rc" != 0 ]]; then
       # test: buildPhase () { echo test exit 1; exit 1; }
       __showPhaseFooterError "$curPhase" "$startTime" "$endTime" "$rc"
+      $xtrace_was_on && set -x # enable xtrace
       return $rc
     fi
 
@@ -133,4 +140,6 @@ runPhase() {
 
         cd "${sourceRoot:-.}"
     fi
+
+    $xtrace_was_on && set -x # enable xtrace
 }
