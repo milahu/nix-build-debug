@@ -269,7 +269,7 @@ nix_build_out=$(nix-build -E "$nix_build_env_expr" 2>&1)
 env_json=$(echo "$nix_build_out" | awk "/^$env_json_start$/{flag=1; next} /^$env_json_end$/{flag=0} flag")
 #echo "env_json: $env_json" >&2
 
-if [ -z "$env_json" ]; then
+if [ -z "$env_json" ] || ! echo "$env_json" | jq -c >/dev/null 2>&1; then
     echo "error: failed to get the build environment" >&2
     echo "output from nix-build:" >&2
     echo "$nix_build_out" >&2
