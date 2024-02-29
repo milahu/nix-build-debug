@@ -234,7 +234,16 @@ nix_build_env_expr=$(
     echo "    source \${$get_env_path}"
     # print env.json
     echo "    echo ${env_json_start@Q}"
-    echo "    cat \$out"
+    #echo '    outputs=""' # test: no outputs
+    echo '    read firstOutput _ <<<"$outputs"'
+    echo "    if [ -z \"\$firstOutput\" ]; then"
+    # $ nix-shell -E 'with import <nixpkgs> {}; stdenv.mkDerivation { outputs = []; }'
+    # error: list index 0 is out of bounds
+    echo "      echo 'error: the derivation has no outputs'"
+    echo "      exit 2"
+    echo "    fi"
+    #echo "    echo \"# firstOutput = ''\${firstOutput@Q}\"" # debug
+    echo "    cat ''\${!firstOutput}"
     echo "    echo"
     echo "    echo ${env_json_end@Q}"
     # make the build fail to not pollute the nix store
