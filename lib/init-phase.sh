@@ -58,10 +58,16 @@ __goto_script_line() {
     echo "# __goto_script_line: exiting the subshell" >&2
     exit 1
 }
-shopt -s extglob
-#source "${BASH_SOURCE%/*}"/.all_functions.sh
-export GZIP_NO_TIMESTAMPS=1
-#export PS4='\n# $(realpath --relative-to=$PWD ${BASH_SOURCE} | sed -E 's/\.line[0-9]+\.sh$//') ${LINENO}\n# '
-export PS4='\n# $(realpath --relative-to="$NIX_BUILD_TOP" --relative-base="$NIX_BUILD_TOP" "$NIX_BUILD_TOP/${BASH_SOURCE}" | sed -E "s/\.line[0-9]+\.sh$//") ${LINENO} # ${FUNCNAME[0]}\n# cwd: $(realpath --relative-to=$NIX_BUILD_TOP --relative-base=$NIX_BUILD_TOP "$PWD")\n# '
 
-# FIXME do not know how to unpack source archive
+shopt -s extglob
+
+#source "${BASH_SOURCE%/*}"/.all_functions.sh
+
+export GZIP_NO_TIMESTAMPS=1
+
+# make xtrace more verbose (set -x)
+function __ps4_fn() {
+    case "${FUNCNAME[1]}" in __handle_exit) printf '# '; return;; esac
+    echo -e "\n# cwd: $(realpath --relative-to=$NIX_BUILD_TOP --relative-base=$NIX_BUILD_TOP "$PWD")\n# fn: ${FUNCNAME[1]}\n# "
+}
+export PS4='$(__ps4_fn)'
