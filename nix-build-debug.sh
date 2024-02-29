@@ -80,6 +80,18 @@ while (( "$#" )); do
             chdir_build_root=true
             shift 1
             ;;
+        --workdir)
+            build_root="$2"
+            if ! [ -d "$build_root" ]; then
+                echo "error: invalid workdir path: ${build_root@Q}" >&2
+                exit 1
+            fi
+            build_root="$(readlink -f "$2")"
+            $debug &&
+            echo "using build root path ${build_root@Q}" >&2
+            chdir_build_root=true
+            shift 2
+            ;;
         --debug)
             if $debug2; then debug3=true; fi
             if $debug; then debug2=true; fi
