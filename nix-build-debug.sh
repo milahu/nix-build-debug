@@ -107,6 +107,14 @@ fi
 
 
 
+if [[ "$pkgs_path" == "." ]]; then
+    pkgs_path="./."
+elif [[ "$pkgs_path" == ".." ]]; then
+    pkgs_path="../."
+fi
+
+
+
 function is_clean_path() {
     [ "$build_root" = "$(printf "%q" "$build_root")" ]
 }
