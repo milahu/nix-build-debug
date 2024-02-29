@@ -49,7 +49,7 @@ runPhase() {
 
     #if declare -F ${curPhase}_from_string >/dev/null; then ${curPhase}_from_string; else $curPhase; fi
 
-    subshell_temp=$(mktemp -u -t $([ -d /run/user/$UID ] && echo "-p/run/user/$UID") shell.$$.subshell.XXXXXXXXXX)
+    subshell_temp=$(mktemp -u -t "$([ -d /run/user/$UID ] && echo "-p/run/user/$UID" || echo "-p$__NIX_BUILD_DEBUG_DIR")" shell.$$.subshell.XXXXXXXXXX)
     #subshell_id=${subshell_temp##*.}
 
     # run the phase function in a subshell to catch exit
