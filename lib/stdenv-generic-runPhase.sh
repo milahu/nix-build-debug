@@ -4,6 +4,7 @@ __showPhaseFooterError() {
     local startTime="$2";
     local endTime="$3";
     local rc="$4";
+    local xtrace_was_on="$5";
     local delta=$(( endTime - startTime ));
     # no. always show the phase footer
     #(( delta < 30 )) && return;
@@ -14,6 +15,9 @@ __showPhaseFooterError() {
     (( H > 0 )) && echo -n "$H hours ";
     (( M > 0 )) && echo -n "$M minutes ";
     echo "$S seconds"
+    if ! $xtrace_was_on; then
+      echo 'hint: enable xtrace with "set -x"'
+    fi
 }
 
 runPhase() {
@@ -127,7 +131,7 @@ runPhase() {
 
     if [[ "$rc" != 0 ]]; then
       # test: buildPhase () { echo test exit 1; exit 1; }
-      __showPhaseFooterError "$curPhase" "$startTime" "$endTime" "$rc"
+      __showPhaseFooterError "$curPhase" "$startTime" "$endTime" "$rc" "$xtrace_was_on"
       $xtrace_was_on && set -x # enable xtrace
       return $rc
     fi
