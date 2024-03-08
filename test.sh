@@ -13,3 +13,6 @@ exec ./nix-build-debug.sh '<nixpkgs>' -A hello "$@"
 # test buildCommandPath
 # passAsFile = [ "buildCommand" ];
 # this is almost never used
+
+# test preBuild string
+./nix-build-debug.sh '<nixpkgs>' -A tsocks

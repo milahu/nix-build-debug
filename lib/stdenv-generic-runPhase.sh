@@ -20,6 +20,106 @@ __showPhaseFooterError() {
     fi
 }
 
+__runPhaseHelp() {
+    echo "usage: runPhase <phaseName> [options]"
+    echo "example: runPhase buildPhase"
+    echo "hint: runPhase [TAB][TAB]"
+    echo
+    echo "options:"
+    echo
+    echo "    -e"
+    echo "    --edit"
+    echo "        edit the phase, then run it"
+    echo "        example: runPhase buildPhase -e"
+    echo "        to edit only, use editPhase"
+    echo
+    echo "    -f"
+    echo "    --force"
+    echo "        force editing"
+    # todo...
+}
+
+# non-standard
+editPhase() {
+    # parse args
+    local curPhase=""
+    local doForce=false
+    while (( "$#" )); do
+        case "$1" in
+            --force|-f)
+                doForce=true
+                shift
+                ;;
+            *)
+                if [ -n "$curPhase" ]; then
+                    echo "error: unrecognized argument: ${1@Q}"
+                    return 1
+                fi
+                curPhase="$1"
+                shift
+                ;;
+        esac
+    done
+
+    # validate phase name
+    # also allow hook names
+    if ! echo "$curPhase" | grep -q -E '^([a-zA-Z0-9]+Phase|(pre|post)[A-Z][a-zA-Z0-9]+|buildCommand(Path)?)$'; then
+        echo "editPhase: error: not a phase name: ${curPhase@Q}" >&2
+        return 1
+    fi
+
+    if [ "$curPhase" = "buildCommandPath" ]; then
+        echo "error: not implemented: editing phase ${curPhase@Q}" >&2
+        return 1
+    fi
+
+    local isPhaseString=true
+    if [ -z "${!curPhase}" ] && [ "${curPhase: -5}" = "Phase" ]; then
+        # curPhase is not a custom phase string
+        isPhaseString=false
+    fi
+
+    if ! $isPhaseString && ! $doForce; then
+        local phaseName="${curPhase:0: -5}"
+        echo "error: $curPhase is not a custom phase string, but the default $curPhase function from stdenv" >&2
+        echo "probably you want to edit hooks:" >&2
+        echo "  editPhase pre${phaseName^}" >&2
+        echo "  editPhase post${phaseName^}" >&2
+        echo "if you really want to edit the default $curPhase function, then run:" >&2
+        echo "  editPhase $curPhase -f" >&2
+        return 1
+    fi
+
+    local curPhasePath="$__NIX_BUILD_DEBUG_DIR/lib/$curPhase.sh"
+    if $isPhaseString; then
+        echo "${!curPhase}" >"$curPhasePath"
+    else
+        declare -f "$curPhase" >"$curPhasePath"
+    fi
+
+    local curPhasePathBak="$curPhasePath.bak"
+    if ! [ -e "$curPhasePathBak" ]; then
+        echo "writing the original $curPhase to ${curPhasePathBak@Q}"
+        cp "$curPhasePath" "$curPhasePathBak"
+    fi
+
+    if ! $EDITOR "$curPhasePath"; then
+        echo "error: failed to run: ${EDITOR@Q} ${curPhasePath@Q}" >&2
+        return 1
+    fi
+
+    echo "loading the modified $curPhase from ${curPhasePath@Q}"
+    if $isPhaseString; then
+        # always trace this
+        echo "# declare $curPhase=\"\$( < ${curPhasePath@Q} )\""
+        declare -g $curPhase="$( < "$curPhasePath" )"
+    else
+        # always trace this
+        echo "# source ${curPhasePath@Q}"
+        source "$curPhasePath"
+    fi
+}
+
 runPhase() {
 
     # https://stackoverflow.com/questions/14564746/in-bash-how-to-get-the-current-status-of-set-x
@@ -28,13 +128,61 @@ runPhase() {
 
     if [ -n "$_x" ]; then xtrace_on=true; else xtrace_on=false; fi
 
-    #local curPhase="$*"
-    local curPhase="$1"; shift
+    if [ "$#" = "0" ]; then
+        echo "error: no arguments" >&2
+        __runPhaseHelp
+        return 1
+    fi
+
+    # parse args
+    local curPhase=""
+    local doEdit=false
+    local doForce=false
+    while (( "$#" )); do
+        #echo "arg: ${1@Q}"
+        case "$1" in
+            --help|-h)
+                __runPhaseHelp
+                return 1
+                ;;
+            --list|-l)
+                printf "%s\n" $phases
+                return
+                ;;
+            --edit|-e)
+                doEdit=true
+                shift
+                ;;
+            --force|-f)
+                doForce=true
+                shift
+                ;;
+            *)
+                if [ -n "$curPhase" ]; then
+                    echo "error: unrecognized argument: ${1@Q}"
+                    return 1
+                fi
+                curPhase="$1"
+                shift
+                ;;
+        esac
+    done
+
     # non-standard: validate phase name
     if ! echo "$curPhase" | grep -q -E '^([a-zA-Z0-9]+Phase|buildCommand(Path)?)$'; then
         echo "runPhase: error: not a phase name: ${curPhase@Q}" >&2
         return 1
     fi
+
+    if $doEdit; then
+        local args
+        if $doForce; then args="-f"; fi
+        if ! editPhase "$curPhase" $args; then
+            echo "error: failed to run: editPhase ${curPhase@Q}" >&2
+            return 1
+        fi
+    fi
+
     if [[ "$curPhase" = unpackPhase && -n "${dontUnpack:-}" ]]; then return; fi
     if [[ "$curPhase" = patchPhase && -n "${dontPatch:-}" ]]; then return; fi
     if [[ "$curPhase" = configurePhase && -n "${dontConfigure:-}" ]]; then return; fi

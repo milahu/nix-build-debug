@@ -401,6 +401,23 @@ phases_json_array="${phases_json_array:0: -1}]"
 $debug &&
 echo "phases_json_array: $phases_json_array" >&2
 
+_phases_and_hooks=$(
+    for curPhase in $phases; do
+        if [ "${curPhase: -5}" = "Phase" ]; then
+            phaseName="${curPhase:0: -5}"
+            echo -n "pre${phaseName^} "
+            echo -n "$curPhase "
+            echo -n "post${phaseName^} "
+        else
+            echo -n "$curPhase "
+        fi
+    done
+)
+_phases_and_hooks="${_phases_and_hooks:0: -1}"
+
+$debug &&
+echo "_phases_and_hooks: $_phases_and_hooks" >&2
+
 
 
 # no. this fails to pass the bash environment to the phases
@@ -676,6 +693,7 @@ echo "writing $bashrc_path"
 
     # the $phases variable is set in nix-build, but not in nix-shell
     echo "phases=${phases@Q}"
+    echo "_phases_and_hooks=${_phases_and_hooks@Q}"
 
     #echo "PATH=${env_path@Q}"
     # prepend paths in reverse order to $PATH
@@ -689,6 +707,7 @@ echo "writing $bashrc_path"
 
     # add completions
     echo 'complete -W "$phases" -o nosort runPhase'
+    echo 'complete -W "$_phases_and_hooks" -o nosort editPhase'
 
     # envCommand is empty when "--command" and "--run" are not used
 
