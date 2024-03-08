@@ -87,6 +87,13 @@ runPhase() {
         # function named $curPhase.
         #eval "${!curPhase:-$curPhase}"
 
+        # non-standard
+        if [ "$curPhase" = "buildCommandPath" ]; then
+            $xtrace_on && set -x
+            "${!curPhase}"
+            exit $?
+        fi
+
         # non-standard: run custom phase strings via ${curPhase}_from_string functions
         # TODO why? is this better for tracing?
         # this is *not* required for "continue from line"

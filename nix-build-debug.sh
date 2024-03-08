@@ -432,17 +432,16 @@ echo "writing $variables_path" >&2
         map(select(
             (.key != "buildCommand")
             and
-            (.key != "buildCommand_bak_nix_build_debug")
-            and
-            (.key != "buildCommandPath_bak_nix_build_debug")
-            and
             (. as $val | '"$ignore_envs_json_array"' | index($val.key) == null)
-            and
-            (. as $val | '"$phases_json_array"' | index($val.key) == null)
         )) |
         .[] |
         if .value.type == "exported" then
-            "export " + .key + "=" + (.value.value | @sh)
+            "export " + (
+                if .key == "buildCommand_bak_nix_build_debug" then "buildCommand"
+                elif .key == "buildCommandPath_bak_nix_build_debug" then "buildCommandPath"
+                else .key
+                end
+            ) + "=" + (.value.value | @sh)
         elif .value.type == "var" then
             .key + "=" + (.value.value | @sh)
         elif .value.type == "array" then
@@ -543,65 +542,6 @@ done < <(
 )
 
 
-
-# TODO refactor writing phase functions
-
-# write phase functions from strings
-
-for phase in $phases; do
-
-    # example: buildPhase_from_string
-    function_name="${phase}_from_string"
-
-    function_body=$(echo "$env_json" | jq -r ".variables.$phase.value // empty")
-    if [ -z "$function_body" ]; then
-        # ignore empty strings
-        # usually we use the noop command ":" to disable a phase
-        #   buildPhase = ":";
-        continue
-    fi
-
-    # create the function
-    #   buildPhase_from_string() { $buildPhase }
-    # we cannot overwrite the buildPhase function
-    # because the buildPhase string can call the original buildPhase function
-
-    function_path="$lib_dir/$function_name.sh"
-    function_name_list+=($function_name)
-
-    $debug &&
-    echo "writing $function_path" >&2
-
-    {
-        echo "$function_name() {"
-        echo 'source "$__NIX_BUILD_DEBUG_DIR"/lib/.init-phase.sh'
-        echo '__goto_script_line "$1"'
-        echo "################ $function_name ################"
-        echo "$function_body"
-        echo
-        echo "}"
-
-    } >"$function_path"
-
-done
-
-
-
-# TODO? store in ./lib/
-# patch the runPhase function
-#   eval "${!curPhase:-$curPhase}"
-# should be
-#   if declare -F ${curPhase}_from_string >/dev/null; then ${curPhase}_from_string; else $curPhase; fi
-
-if false; then
-function_path="$lib_dir"/runPhase.sh
-$debug &&
-echo "patching the runPhase function in ${function_path@Q} to call our \${curPhase}_from_string functions" >&2
-sed_script='s/eval "${!curPhase:-$curPhase}";/'
-sed_script+='if declare -F ${curPhase}_from_string >\/dev\/null; then '
-sed_script+='${curPhase}_from_string; else $curPhase; fi/'
-sed -i "$sed_script" "$function_path"
-fi
 
 # copy from lib/runPhase.sh
 
