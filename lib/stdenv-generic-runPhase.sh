@@ -31,8 +31,8 @@ runPhase() {
     #local curPhase="$*"
     local curPhase="$1"; shift
     # non-standard: validate phase name
-    if [[ "$curPhase" != *"Phase" ]] || [[ "$curPhase" == "Phase" ]]; then
-        echo "runPhase: error: not a phase name: ${curPhase}. phase names must end with 'Phase'" >&2
+    if ! echo "$curPhase" | grep -q -E '^([a-zA-Z0-9]+Phase|buildCommand(Path)?)$'; then
+        echo "runPhase: error: not a phase name: ${curPhase@Q}" >&2
         return 1
     fi
     if [[ "$curPhase" = unpackPhase && -n "${dontUnpack:-}" ]]; then return; fi
