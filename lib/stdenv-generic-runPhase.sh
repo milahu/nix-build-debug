@@ -47,12 +47,6 @@ runPhase() {
 
     local startTime=$(date +"%s")
 
-    # Evaluate the variable named $curPhase if it exists, otherwise the
-    # function named $curPhase.
-    #eval "${!curPhase:-$curPhase}"
-
-    #if declare -F ${curPhase}_from_string >/dev/null; then ${curPhase}_from_string; else $curPhase; fi
-
     subshell_temp=$(mktemp -u -t "$([ -d /run/user/$UID ] && echo "-p/run/user/$UID" || echo "-p$__NIX_BUILD_DEBUG_DIR")" shell.$$.subshell.XXXXXXXXXX)
     #subshell_id=${subshell_temp##*.}
 
@@ -82,11 +76,22 @@ runPhase() {
         { declare -p; declare -p -f; } >$subshell_temp.env.1.sh
         echo -n "$PWD" >$subshell_temp.cwd.1.txt
 
-        local rc=
-        if declare -F ${curPhase}_from_string >/dev/null; then
-            ${curPhase}_from_string "$@"
+        # Evaluate the variable named $curPhase if it exists, otherwise the
+        # function named $curPhase.
+        #eval "${!curPhase:-$curPhase}"
+
+        # non-standard: run custom phase strings via ${curPhase}_from_string functions
+        # TODO why? is this better for tracing?
+        # this is *not* required for "continue from line"
+        # and this changes the build process (too much?)
+        #if declare -F ${curPhase}_from_string >/dev/null; then
+        #    ${curPhase}_from_string "$@"
+        # standard: run custom phase strings with eval
+        if [ -n "${!curPhase}" ]; then
+            eval "${!curPhase}"
             exit $?
         else
+            # non-standard: pass arguments to the phase function
             $curPhase "$@"
             exit $?
         fi
