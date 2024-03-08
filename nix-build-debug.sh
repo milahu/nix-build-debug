@@ -519,15 +519,6 @@ mkdir -p "$lib_dir"
 
 
 
-init_phase_path="$lib_dir"/.init-phase.sh
-
-$debug &&
-echo "writing init-phase.sh to ${init_phase_path@Q}"
-
-cp "$this_dir/lib/init-phase.sh" "$init_phase_path"
-
-
-
 # fix output paths
 
 # the builder should write files only to $build_root
