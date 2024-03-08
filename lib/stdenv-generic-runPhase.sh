@@ -4,7 +4,7 @@ __showPhaseFooterError() {
     local startTime="$2";
     local endTime="$3";
     local rc="$4";
-    local xtrace_was_on="$5";
+    local xtrace_on="$5";
     local delta=$(( endTime - startTime ));
     # no. always show the phase footer
     #(( delta < 30 )) && return;
@@ -15,12 +15,19 @@ __showPhaseFooterError() {
     (( H > 0 )) && echo -n "$H hours ";
     (( M > 0 )) && echo -n "$M minutes ";
     echo "$S seconds"
-    if ! $xtrace_was_on; then
+    if ! $xtrace_on; then
       echo 'hint: enable xtrace with "set -x"'
     fi
 }
 
 runPhase() {
+
+    # https://stackoverflow.com/questions/14564746/in-bash-how-to-get-the-current-status-of-set-x
+    _x=${-//[^x]/}
+    set +x # disable xtrace
+
+    if [ -n "$_x" ]; then xtrace_on=true; else xtrace_on=false; fi
+
     #local curPhase="$*"
     local curPhase="$1"; shift
     # non-standard: validate phase name
@@ -88,9 +95,18 @@ runPhase() {
         #    ${curPhase}_from_string "$@"
         # standard: run custom phase strings with eval
         if [ -n "${!curPhase}" ]; then
+            # no. xtrace of eval is too verbose
+            #$xtrace_on && set -x
+            if $xtrace_on; then
+                # quiet xtrace
+                echo "# eval \"\$$curPhase\""
+                eval "set -x; ${!curPhase}"
+                exit $?
+            fi
             eval "${!curPhase}"
             exit $?
         else
+            $xtrace_on && set -x
             # non-standard: pass arguments to the phase function
             $curPhase "$@"
             exit $?
@@ -98,8 +114,6 @@ runPhase() {
     )
 
     rc=$?
-
-    set +x # disable xtrace
 
     # import env from subshell
     # dont update some global variables
@@ -116,11 +130,6 @@ runPhase() {
     # change workdir
     cd "$(<$subshell_temp.cwd.2.txt)"
 
-    xtrace_was_on=false
-    if cat $subshell_temp.env.1.sh | grep -m1 '^declare -r SHELLOPTS=' | grep -q -w xtrace; then
-        xtrace_was_on=true
-    fi
-
     rm $subshell_temp.*
 
     # TODO on success, add the phase name to $donePhases (non-standard)
@@ -136,12 +145,16 @@ runPhase() {
 
     if [[ "$rc" != 0 ]]; then
       # test: buildPhase () { echo test exit 1; exit 1; }
-      __showPhaseFooterError "$curPhase" "$startTime" "$endTime" "$rc" "$xtrace_was_on"
-      $xtrace_was_on && set -x # enable xtrace
+      __showPhaseFooterError "$curPhase" "$startTime" "$endTime" "$rc" "$xtrace_on"
+      $xtrace_on && set -x # enable xtrace
       return $rc
     fi
 
     showPhaseFooter "$curPhase" "$startTime" "$endTime"
+
+    if [ "$curPhase" = unpackPhase ]; then
+        $xtrace_on && set -x # enable xtrace
+    fi
 
     if [ "$curPhase" = unpackPhase ]; then
         # make sure we can cd into the directory
@@ -150,5 +163,5 @@ runPhase() {
         cd "${sourceRoot:-.}"
     fi
 
-    $xtrace_was_on && set -x # enable xtrace
+    $xtrace_on && set -x # enable xtrace
 }
