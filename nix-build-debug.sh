@@ -491,75 +491,15 @@ echo "writing $functions_path" >&2
         ) + "\n}"
     '
 
+    echo "# patched runPhase function"
+    cat "$this_dir"/lib/stdenv-generic-runPhase.sh
+
 } >"$functions_path"
 
 
 
-# TODO refactor writing phase functions
-
-# write phase functions
-
-# !!! NO: write phase functions and stdenv functions
-# -> only phase functions
-# not stdenv functions
-
 lib_dir="$debug_dir/lib"
 mkdir -p "$lib_dir"
-
-$debug &&
-echo "writing phase functions to $lib_dir" >&2
-
-function_name_list=()
-
-while read function_name; do
-
-    is_phase=false
-    if [[ " $phases " == *" $function_name "* ]]; then
-        is_phase=true
-    fi
-
-    $is_phase || continue
-
-    function_path="$lib_dir/$function_name.sh"
-    function_name_list+=($function_name)
-
-    $debug2 &&
-    echo "writing $function_path" >&2
-
-    {
-        echo "$function_name() {"
-        echo 'source "$__NIX_BUILD_DEBUG_DIR"/lib/.init-phase.sh'
-        echo '__goto_script_line "$1"'
-        echo "################ $function_name ################"
-        echo "$env_json" | jq -r ".bashFunctions.$function_name"
-        echo
-        echo "}"
-
-    } >"$function_path"
-
-done < <(
-    echo "$env_json" | jq -r '.bashFunctions | keys[]'
-)
-
-
-
-# copy from lib/runPhase.sh
-
-function_path="$lib_dir"/runPhase.sh
-
-if [ -e "$function_path" ]; then
-    function_path_bak="$function_path.bak"
-    $debug &&
-    echo "moving original runPhase function to ${function_path_bak@Q}" >&2
-    mv "$function_path" "$function_path_bak"
-fi
-
-$debug &&
-echo "writing patched runPhase function to ${function_path@Q}" >&2
-
-cp "$this_dir"/lib/stdenv-generic-runPhase.sh "$function_path"
-
-function_name_list+=(runPhase)
 
 
 
@@ -670,12 +610,6 @@ echo "writing $bashrc_path"
 
     functions_path="$debug_dir/lib/functions.sh"
     echo "source ${functions_path@Q}"
-
-    # phase functions
-    for function_name in ${function_name_list[@]}; do
-        function_path="$lib_dir/$function_name.sh"
-        echo "source ${function_path@Q}"
-    done
 
     if ! $pure; then
         echo '# impure shell: load ~/.bashrc'
