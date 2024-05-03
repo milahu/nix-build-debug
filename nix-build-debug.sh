@@ -123,6 +123,8 @@ if [[ "$pkgs_path" == "." ]]; then
     pkgs_path="./."
 elif [[ "$pkgs_path" == ".." ]]; then
     pkgs_path="../."
+else
+    pkgs_path="$(realpath "$pkgs_path")"
 fi
 
 
