@@ -33,6 +33,9 @@ debug=false
 debug2=false
 debug3=false
 
+# same length '/nix/store' to make it easier to patch store paths
+tmp_nix_store='/tmp/nixbd'
+
 # add some basic tools to make the shell more usable
 # TODO remove these extra paths in the phase scripts
 # TODO expose CLI option
@@ -80,6 +83,18 @@ while (( "$#" )); do
             chdir_build_root=true
             shift 1
             ;;
+        --tmp-nix-store)
+            tmp_nix_store="$(realpath -s "$2")"
+            $debug &&
+            echo "using temporary nix store ${tmp_nix_store@Q}" >&2
+            if $debug && [ ${#tmp_nix_store} != 10 ]; then
+                s="info: temporary nix store ${tmp_nix_store@Q} has different length than '/nix/store': "
+                s+="${#tmp_nix_store} versus 10 chars. "
+                s+="this can make it harder to patch store paths."
+                echo "$s" >&2
+            fi
+            shift 2
+            ;;
         --workdir)
             build_root="$2"
             if ! [ -d "$build_root" ]; then
@@ -115,6 +130,7 @@ if $debug; then
     echo "pkgs_path: ${pkgs_path@Q}" >&2
     echo "pkg_attr: ${pkg_attr@Q}" >&2
     echo "build_root: ${build_root@Q}" >&2
+    echo "tmp_nix_store: ${tmp_nix_store@Q}" >&2
 fi
 
 
@@ -125,6 +141,13 @@ elif [[ "$pkgs_path" == ".." ]]; then
     pkgs_path="../."
 else
     pkgs_path="$(realpath "$pkgs_path")"
+fi
+
+
+
+if ! mkdir -p "$tmp_nix_store"; then
+    echo "error: failed to create temporary nix store ${tmp_nix_store@Q}" >&2
+    exit 1
 fi
 
 
@@ -555,28 +578,22 @@ echo "build outputs: $outputs" >&2
 $debug &&
 echo "patching the output paths in ${variables_path@Q} so the builder does not write to the nix store" >&2
 sed_script=""
-is_first=true
-first_output_path=""
 for output in $outputs; do
-    if $is_first; then
-        output_path="$build_root/result"
-        first_output_path="$output_path"
-        is_first=false
-    else
-        output_path="$build_root/result-$output"
+    nix_store_path=$(grep -m1 -E "^export $output='/nix/store/(.*)'$" "$variables_path" | cut -d"'" -f2)
+    if [ -z "$nix_store_path" ]; then
+      echo "error: not found nix_store_path for output $output in $variables_path" >&2
+      exit 1
     fi
-    if [ -e "$output_path" ]; then
-        echo "warning: output path exists: ${output_path@Q}" >&2
+    tmp_store_path="$tmp_nix_store/${nix_store_path:11}"
+    if [ -e "$tmp_store_path" ]; then
+        echo "warning: output path exists: $tmp_store_path" >&2
         echo "hint:" >&2
-        echo "  rm -rf ${build_root@Q}/result*" >&2
+        echo "  rm -rf $tmp_store_path" >&2
     fi
-    $debug &&
-    echo "using output path ${output_path@Q}" >&2
-    sed_script+="s|^export $output=|export $output=${output_path@Q}\n${output}_bak_nix_build_debug=|; "
+    # patch "export out='/nix/store/...'" etc
+    # also patch "prefix='/nix/store/...'" for the first output
+    sed_script+="s|$nix_store_path|$tmp_store_path|; "
 done
-
-# note: "prefix=..." not "export prefix=..."
-sed_script+="s|^prefix=|prefix=${first_output_path@Q}\nprefix_bak_nix_build_debug=|; "
 
 # env["NIX_BUILD_TOP"] = env["TMPDIR"] = env["TEMPDIR"] = env["TMP"] = env["TEMP"] = *tmp;
 # no. stay in the current workdir
