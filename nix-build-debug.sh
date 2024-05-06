@@ -20,6 +20,10 @@ this_dir="${this_dir%/*}"
 # based on https://github.com/NixOS/nix/blob/master/src/nix/get-env.sh
 get_env_path="$this_dir/get-env.sh"
 
+# cached bash build
+# TODO patch this in nix-build-debug.nix
+bash_without_jobcontrol=''
+
 
 
 # parse args
@@ -755,6 +759,12 @@ echo "writing $bashrc_path"
 
 
 shell="$NIX_BUILD_SHELL"
+
+if [ -z "$shell" ] && [ -n "$bash_without_jobcontrol" ]; then
+    # use cached bash build
+    shell="$bash_without_jobcontrol"
+fi
+
 if [ -z "$shell" ]; then
     # $builder is a non-interactive bash shell
     # which is painful to use for humans
