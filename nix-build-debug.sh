@@ -116,6 +116,11 @@ while (( "$#" )); do
         # TODO more
         #--chroot) # use $build_root as root path
         *)
+            if [ -n "$pkgs_path" ]; then
+                # pkgs_path is already set
+                echo "error: unrecognized argument ${1@Q}" >&2
+                exit 1
+            fi
             pkgs_path="$1"
             shift 1
             ;;
@@ -139,6 +144,11 @@ if [[ "$pkgs_path" == "." ]]; then
     pkgs_path="./."
 elif [[ "$pkgs_path" == ".." ]]; then
     pkgs_path="../."
+elif [[ "$pkgs_path" == "" ]]; then
+    pkgs_path="$PWD/default.nix"
+elif [[ "${pkgs_path:0:1}" == "<" ]]; then
+    # example: <nixpkgs>
+    :
 else
     pkgs_path="$(realpath "$pkgs_path")"
 fi
