@@ -11,6 +11,14 @@
 
 
 
+if [ $# = 0 ]; then
+    echo "error: no arguments" >&2
+    echo "example: nix-build-debug '<nixpkgs>' -A hello" >&2
+    exit 1
+fi
+
+
+
 this_dir=$(readlink -f "$0")
 this_dir="${this_dir%/*}"
 
