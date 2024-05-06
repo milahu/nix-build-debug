@@ -78,7 +78,6 @@ while (( "$#" )); do
             ;;
         --tempdir)
             build_root=$(mktemp -d -t nix-build-debug.XXXXXX)
-            $debug &&
             echo "using temporary build root path ${build_root@Q}" >&2
             chdir_build_root=true
             shift 1
