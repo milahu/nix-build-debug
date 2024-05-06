@@ -149,6 +149,10 @@ if $debug; then
     echo "tmp_nix_store: ${tmp_nix_store@Q}" >&2
 fi
 
+if $debug3; then
+    set -x
+fi
+
 
 
 if [[ "$pkgs_path" == "." ]]; then
