@@ -32,6 +32,13 @@ get_env_path="$this_dir/get-env.sh"
 # TODO patch this in nix-build-debug.nix
 bash_without_jobcontrol=''
 
+# TODO patch this in nix-build-debug.nix
+# dependencies: gawk jq
+extra_path=""
+if [ -n "$extra_path" ]; then
+    export PATH="$extra_path:$PATH"
+fi
+
 
 
 # parse args
