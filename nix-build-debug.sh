@@ -97,7 +97,7 @@ while (( "$#" )); do
             ;;
         --tempdir)
             build_root=$(mktemp -d -t nix-build-debug.XXXXXX)
-            echo "using temporary build root path ${build_root@Q}" >&2
+            echo "using temporary build root ${build_root@Q}" >&2
             chdir_build_root=true
             shift 1
             ;;
@@ -485,6 +485,14 @@ echo "_phases_and_hooks: $_phases_and_hooks" >&2
 
 
 
+# TODO search for the string /build/source in phase functions
+# this should be $NIX_BUILD_TOP/source
+# if /build/source is found, show a warning
+# nix-build has NIX_BUILD_TOP=/build
+# but nix-build-debug has NIX_BUILD_TOP=$PWD or NIX_BUILD_TOP=$tempdir
+
+
+
 # write variables
 
 variables_path="$debug_dir/etc/variables.sh"
@@ -688,7 +696,7 @@ echo "writing $bashrc_path"
     echo "BASH=${shell@Q}"
 
     # dont exit the shell on error
-    # "set -e" is used in the phase scripts, to stop on error
+    # "set -e" is used in lib/stdenv-generic-runPhase.sh to stop runPhase on error
     echo "set +e"
 
     # disable job control in the debug shell
@@ -819,4 +827,8 @@ fi
 # TODO? run this in a clean env
 # inherit only requires envs
 
-exec "$shell" --noprofile --rcfile "$bashrc_path"
+"$shell" --noprofile --rcfile "$bashrc_path"
+
+if $chdir_build_root; then
+  echo "keeping temporary build root ${build_root@Q}" >&2
+fi

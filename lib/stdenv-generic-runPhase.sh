@@ -213,12 +213,15 @@ runPhase() {
 
     #echo "# runPhase: starting subshell"
 
+    # FIXME __handle_exit: command not found
+
     (
         #echo "# runPhase subshell: running $curPhase"
         __handle_exit() {
             # this is always reached, success or error
             rc=$?
             set +x # disable xtrace
+            set +e # disable errexit
             unset __handle_exit
             # return new state to parent shell
             { declare -p; declare -p -f; } >$subshell_temp.env.2.sh
@@ -234,6 +237,10 @@ runPhase() {
         # Evaluate the variable named $curPhase if it exists, otherwise the
         # function named $curPhase.
         #eval "${!curPhase:-$curPhase}"
+
+        # enable errexit
+        # exit subshell on error to stop runPhase on error
+        set -e
 
         # non-standard
         if [ "$curPhase" = "buildCommandPath" ]; then
