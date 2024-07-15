@@ -61,11 +61,15 @@ editPhase() {
         esac
     done
 
+    # no. phases can have arbitrary names:
+    # qtPreHook qtOwnPathsHook postPatchMkspecs
+    if false; then
     # validate phase name
     # also allow hook names
     if ! echo "$curPhase" | grep -q -E '^([a-zA-Z0-9]+Phase|(pre|post)[A-Z][a-zA-Z0-9]+|buildCommand(Path)?)$'; then
         echo "editPhase: error: not a phase name: ${curPhase@Q}" >&2
         return 1
+    fi
     fi
 
     if [ "$curPhase" = "buildCommandPath" ]; then
@@ -168,10 +172,14 @@ runPhase() {
         esac
     done
 
+    # no. phases can have arbitrary names:
+    # qtPreHook qtOwnPathsHook postPatchMkspecs
+    if false; then
     # non-standard: validate phase name
     if ! echo "$curPhase" | grep -q -E '^([a-zA-Z0-9]+Phase|buildCommand(Path)?)$'; then
         echo "runPhase: error: not a phase name: ${curPhase@Q}" >&2
         return 1
+    fi
     fi
 
     if $doEdit; then
