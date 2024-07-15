@@ -39,6 +39,14 @@ if [ -n "$extra_path" ]; then
     export PATH="$extra_path:$PATH"
 fi
 
+# check dependencies
+for bin in awk jq; do
+    if ! command -v $bin &> /dev/null; then
+        echo "error: missing dependency $bin" >&2
+        exit 1
+    fi
+done
+
 
 
 # parse args
