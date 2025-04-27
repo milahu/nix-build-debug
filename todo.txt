@@ -9,3 +9,7 @@ runPhase buildPhase 1234
 inherit completions from shell
 example:
   git [TAB]
+
+support -E parameter
+example:
+  nix-build-debug.sh -E 'with import <nixpkgs> { }; pkgsStatic.talloc'
