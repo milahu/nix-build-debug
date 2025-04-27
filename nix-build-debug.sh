@@ -816,6 +816,9 @@ if [ -z "$shell" ]; then
         echo '  configureFlags = oldAttrs.configureFlags ++ ['
         echo '    "--disable-job-control"'
         echo '  ];'
+        # fix: bash: parse.y: error: implicit declaration of function 'count_all_jobs'
+        # https://github.com/milahu/nixpkgs/issues/81
+        echo '  CFLAGS = "-Wno-implicit-function-declaration";'
         echo '})'
     )
 
