@@ -96,6 +96,10 @@ ignore_envs=(
     NIX_SSL_CERT_FILE
 )
 
+default_envs=(
+    [SSL_CERT_FILE]=/etc/ssl/certs/ca-bundle.crt
+)
+
 while (( "$#" )); do
     #echo "arg: ${1@Q}"
     case "$1" in
@@ -737,6 +741,9 @@ echo "writing $bashrc_path"
 
     for key in ${inherit_envs[@]}; do
         val=${!key}
+        if [ -z "$val" ]; then
+            val="${default_envs[$key]}"
+        fi
         echo "export $key=${val@Q}"
     done
 
