@@ -51,7 +51,8 @@ done
 
 # parse args
 
-build_root="$PWD"
+#build_root="$PWD"
+build_root="."
 pkgs_path=""
 pkg_attr=""
 pure=false
