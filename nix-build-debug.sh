@@ -82,6 +82,12 @@ inherit_tools=(
 inherit_paths=(
 )
 
+inherit_paths_post=(
+    "$PATH"
+    # main nixos path
+    /run/current-system/sw/bin
+)
+
 inherit_envs=(
     # dont use HOME=/homeless-shelter
     HOME
@@ -775,6 +781,10 @@ echo "writing $bashrc_path"
     # so the first path in inherit_paths has the highest priority
     for ((idx = ${#inherit_paths[@]} - 1; idx >= 0; idx--)); do
         echo "PATH=${inherit_paths[$idx]@Q}:\"\$PATH\""
+    done
+    # append "post" paths to $PATH
+    for ((idx = 0; idx < ${#inherit_paths_post[@]}; idx++)); do
+        echo "PATH=\"\$PATH\":${inherit_paths_post[$idx]@Q}"
     done
     #echo "export PATH"
     $debug &&
