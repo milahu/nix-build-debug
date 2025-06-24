@@ -843,6 +843,39 @@ fi
 
 
 
+# allow to re-enter the dev environment later
+# with ./.nix-build-debug/bin/enter-debug-shell.sh
+# note: cached paths must exist, for example in build/CMakeCache.txt
+enter_sh_path="$debug_dir/bin/enter-debug-shell.sh"
+mkdir -p "$debug_dir/bin"
+{
+  echo '#!/usr/bin/env bash'
+  #echo 'set -eux'
+  echo '# cd to $build_root'
+  echo 'cd "$(dirname "$0")/../.."'
+  echo "shell=${shell@Q}"
+  echo 'if ! [ -e "$shell" ]; then'
+  echo '  echo "missing shell ${shell@Q}. falling back to bash"'
+  echo '  shell=bash'
+  echo 'fi'
+  echo "bashrc_path=${bashrc_path@Q}"
+  if [ "$build_root" != "." ]; then
+    # this is needed for absolute build_root
+    # but then, also bashrc has absolute paths
+    echo "build_root=${build_root@Q}"
+    echo 'if ! [ -e "$bashrc_path" ]; then'
+    echo '  # use relative path'
+    echo '  # this should be ".nix-build-debug/etc/bashrc.sh"'
+    echo '  bashrc_path="$(realpath -m --relative-to="$build_root" "$bashrc_path")"'
+    echo '  echo "using relative bashrc_path ${bashrc_path@Q}"'
+    echo 'fi'
+  fi
+  echo 'exec "$shell" --noprofile --rcfile "$bashrc_path"'
+} >"$enter_sh_path"
+chmod +x "$enter_sh_path"
+
+
+
 # TODO? run this in a clean env
 # inherit only requires envs
 
