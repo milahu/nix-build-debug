@@ -81,7 +81,7 @@ editPhase() {
     fi
 
     local isPhaseString=true
-    if [ -z "${!curPhase}" ] && [ "${curPhase: -5}" = "Phase" ]; then
+    if [ -z "${!curPhase}" ]; then
         # curPhase is not a custom phase string
         isPhaseString=false
     fi
@@ -152,7 +152,7 @@ printPhase() {
     fi
 
     local isPhaseString=true
-    if [ -z "${!curPhase}" ] && [ "${curPhase: -5}" = "Phase" ]; then
+    if [ -z "${!curPhase}" ]; then
         # curPhase is not a custom phase string
         isPhaseString=false
     fi
