@@ -793,6 +793,7 @@ echo "writing $bashrc_path"
     # add completions
     echo 'complete -W "$phases" -o nosort runPhase'
     echo 'complete -W "$_phases_and_hooks" -o nosort editPhase'
+    echo 'complete -W "$_phases_and_hooks" -o nosort printPhase'
 
     # envCommand is empty when "--command" and "--run" are not used
 

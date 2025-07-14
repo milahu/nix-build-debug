@@ -32,6 +32,7 @@ __runPhaseHelp() {
     echo "        edit the phase, then run it"
     echo "        example: runPhase buildPhase -e"
     echo "        to edit only, use editPhase"
+    echo "        to print only, use printPhase"
     echo
     echo "    -f"
     echo "    --force"
@@ -40,6 +41,8 @@ __runPhaseHelp() {
 }
 
 # non-standard
+# note: this does not resolve redirects like
+# buildPhase=cargoBuildHook; cargoBuildHook () { ... }
 editPhase() {
     # parse args
     local curPhase=""
@@ -121,6 +124,43 @@ editPhase() {
         # always trace this
         echo "# source ${curPhasePath@Q}"
         source "$curPhasePath"
+    fi
+}
+
+# non-standard
+# note: this does not resolve redirects like
+# buildPhase=cargoBuildHook; cargoBuildHook () { ... }
+printPhase() {
+    # parse args
+    local curPhase=""
+    while (( "$#" )); do
+        case "$1" in
+            *)
+                if [ -n "$curPhase" ]; then
+                    echo "error: unrecognized argument: ${1@Q}"
+                    return 1
+                fi
+                curPhase="$1"
+                shift
+                ;;
+        esac
+    done
+
+    if [ "$curPhase" = "buildCommandPath" ]; then
+        echo "error: not implemented: printing phase ${curPhase@Q}" >&2
+        return 1
+    fi
+
+    local isPhaseString=true
+    if [ -z "${!curPhase}" ] && [ "${curPhase: -5}" = "Phase" ]; then
+        # curPhase is not a custom phase string
+        isPhaseString=false
+    fi
+
+    if $isPhaseString; then
+        echo "${!curPhase}"
+    else
+        declare -f "$curPhase"
     fi
 }
 
