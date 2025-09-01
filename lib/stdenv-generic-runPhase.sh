@@ -338,7 +338,14 @@ runPhase() {
     source <(sed -E '/^declare -[-aAilnrtux]+ (_|SHELLOPTS|BASHOPTS|BASH_VERSINFO|SHLVL|EUID|PPID|UID)=/d; s/^declare -/declare -g -/' $subshell_temp.env.2.sh)
 
     # change workdir
-    cd "$(<$subshell_temp.cwd.2.txt)"
+    # usually configurePhase does "cd build"
+    local cwd2_rel=$(realpath -m --relative-to="$(<$subshell_temp.cwd.1.txt)" "$(<$subshell_temp.cwd.2.txt)")
+    if [ "$cwd2_rel" != "." ]; then
+      cd "$(<$subshell_temp.cwd.2.txt)"
+
+      # notify user of changes in workdir
+      echo "$curPhase changed workdir to ${cwd2_rel@Q}"
+    fi
 
     rm $subshell_temp.*
 
