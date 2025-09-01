@@ -380,5 +380,5 @@ runPhase() {
         cd "${sourceRoot:-.}"
     fi
 
-    $xtrace_on && set -x # enable xtrace
+    $xtrace_on && set -x || true # enable xtrace
 }
