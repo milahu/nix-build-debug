@@ -927,4 +927,6 @@ chmod +x "$enter_sh_path"
 
 if $chdir_build_root; then
   echo "keeping temporary build root ${build_root@Q}" >&2
+  echo "hint:" >&2
+  echo "  rm -rf ${build_root@Q}" >&2
 fi
