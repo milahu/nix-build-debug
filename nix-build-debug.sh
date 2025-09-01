@@ -68,6 +68,7 @@ pkg_attr=""
 pkg_expr=""
 pure=false
 chdir_build_root=false
+remove_tempdir=false
 help=false
 debug=false
 debug2=false
@@ -134,6 +135,10 @@ while (( "$#" )); do
             build_root=$(mktemp -d -t nix-build-debug.XXXXXX)
             echo "using temporary build root ${build_root@Q}" >&2
             chdir_build_root=true
+            shift 1
+            ;;
+        --remove-tempdir)
+            remove_tempdir=true
             shift 1
             ;;
         --tmp-nix-store)
@@ -926,7 +931,12 @@ chmod +x "$enter_sh_path"
 "$shell" --noprofile --rcfile "$bashrc_path"
 
 if $chdir_build_root; then
-  echo "keeping temporary build root ${build_root@Q}" >&2
-  echo "hint:" >&2
-  echo "  rm -rf ${build_root@Q}" >&2
+  if $remove_tempdir; then
+    echo "removing temporary build root ${build_root@Q}" >&2
+    rm -rf "$build_root"
+  else
+    echo "keeping temporary build root ${build_root@Q}" >&2
+    echo "hint:" >&2
+    echo "  rm -rf ${build_root@Q}" >&2
+  fi
 fi
