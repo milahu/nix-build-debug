@@ -13,7 +13,9 @@
 
 if [ $# = 0 ]; then
     echo "error: no arguments" >&2
-    echo "example: nix-build-debug '<nixpkgs>' -A hello" >&2
+    echo "examples:"
+    echo "  nix-build-debug '<nixpkgs>' -A hello" >&2
+    echo "  nix-build-debug -E 'with import <nixpkgs> {}; hello'" >&2
     exit 1
 fi
 
@@ -55,6 +57,7 @@ done
 build_root="."
 pkgs_path=""
 pkg_attr=""
+pkg_expr=""
 pure=false
 chdir_build_root=false
 debug=false
@@ -114,6 +117,10 @@ while (( "$#" )); do
             pkg_attr="$2"
             shift 2
             ;;
+        --expr|-E)
+            pkg_expr="$2"
+            shift 2
+            ;;
         --tempdir)
             build_root=$(mktemp -d -t nix-build-debug.XXXXXX)
             echo "using temporary build root ${build_root@Q}" >&2
@@ -171,6 +178,7 @@ if $debug; then
     echo
     echo "pkgs_path: ${pkgs_path@Q}" >&2
     echo "pkg_attr: ${pkg_attr@Q}" >&2
+    echo "pkg_expr: ${pkg_expr@Q}" >&2
     echo "build_root: ${build_root@Q}" >&2
     echo "tmp_nix_store: ${tmp_nix_store@Q}" >&2
 fi
@@ -192,6 +200,15 @@ elif [[ "${pkgs_path:0:1}" == "<" ]]; then
     :
 else
     pkgs_path="$(realpath "$pkgs_path")"
+fi
+
+
+
+if [ -z "$pkg_expr" ]; then
+    pkg_expr="import $pkgs_path {}"
+    if [ -n "$pkg_attr" ]; then
+        pkg_expr="($pkg_expr).$pkg_attr"
+    fi
 fi
 
 
@@ -280,9 +297,7 @@ env_json_end="################ env.json end ################"
 
 nix_build_env_expr=$(
 
-    echo "with import $pkgs_path {};"
-
-    echo "$pkg_attr.overrideAttrs (oldAttrs: {"
+    echo "($pkg_expr).overrideAttrs (oldAttrs: {"
 
     # create backup of buildCommandPath
     echo "  buildCommandPath_bak_nix_build_debug ="
