@@ -11,13 +11,21 @@
 
 
 
-if [ $# = 0 ]; then
-    echo "error: no arguments" >&2
+function print_helptext() {
+    echo "nix-build-debug: run nix-build in a debug shell"
+    echo
     echo "examples:"
-    echo "  nix-build-debug '<nixpkgs>' -A hello" >&2
-    echo "  nix-build-debug -E 'with import <nixpkgs> {}; hello'" >&2
-    exit 1
-fi
+    echo "  nix-build-debug"
+    echo "    build the package in ./default.nix"
+    echo "  nix-build-debug '<nixpkgs>' -A hello"
+    echo "  nix-build-debug -E 'with import <nixpkgs> {}; hello'"
+    echo "    build the package in the 'hello' attribute of <nixpkgs>"
+    echo
+    echo "options":
+    echo "  --tempdir"
+    echo "    create a tempdir and run the build there"
+    echo "    by default, the build is run in the current workdir"
+}
 
 
 
@@ -60,6 +68,7 @@ pkg_attr=""
 pkg_expr=""
 pure=false
 chdir_build_root=false
+help=false
 debug=false
 debug2=false
 debug3=false
@@ -151,6 +160,10 @@ while (( "$#" )); do
             chdir_build_root=true
             shift 2
             ;;
+        --help|-h)
+            help=true
+            shift 1
+            ;;
         --debug)
             if $debug2; then debug3=true; fi
             if $debug; then debug2=true; fi
@@ -170,6 +183,11 @@ while (( "$#" )); do
             ;;
     esac
 done
+
+if $help; then
+    print_helptext
+    exit
+fi
 
 debug_dir="$build_root/.nix-build-debug"
 mkdir -p "$debug_dir"
