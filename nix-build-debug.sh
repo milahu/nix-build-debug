@@ -189,12 +189,12 @@ fi
 
 
 
-if [[ "$pkgs_path" == "." ]]; then
+if [[ "$pkgs_path" == "" ]]; then
+    pkgs_path="./."
+elif [[ "$pkgs_path" == "." ]]; then
     pkgs_path="./."
 elif [[ "$pkgs_path" == ".." ]]; then
     pkgs_path="../."
-elif [[ "$pkgs_path" == "" ]]; then
-    pkgs_path="$PWD/default.nix"
 elif [[ "${pkgs_path:0:1}" == "<" ]]; then
     # example: <nixpkgs>
     :
