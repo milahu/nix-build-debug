@@ -116,6 +116,24 @@ inherit_paths_post=(
     /run/current-system/sw/bin
 )
 
+unset_envs=(
+    LANG
+    LC_ALL
+    # man 5 locale
+    LC_CTYPE
+    LC_COLLATE
+    LC_MESSAGES
+    LC_MONETARY
+    LC_NUMERIC
+    LC_TIME
+    LC_ADDRESS
+    LC_IDENTIFICATION
+    LC_MEASUREMENT
+    LC_NAME
+    LC_PAPER
+    LC_TELEPHONE
+)
+
 inherit_envs=(
     # dont use HOME=/homeless-shelter
     HOME
@@ -798,6 +816,10 @@ echo "writing $bashrc_path"
     if [ -n "$TZ" ]; then
         echo "export TZ=${TZ@Q}"
     fi
+
+    for key in ${unset_envs[@]}; do
+        echo "unset $key"
+    done
 
     for key in ${inherit_envs[@]}; do
         val=${!key}
