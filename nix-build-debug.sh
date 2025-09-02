@@ -22,9 +22,24 @@ function print_helptext() {
     echo "    build the package in the 'hello' attribute of <nixpkgs>"
     echo
     echo "options":
+    echo "  --attr ATTR"
+    echo "  -A ATTR"
+    echo "    build the package ATTR of the package set"
+    echo "  --expr EXPR"
+    echo "  -E EXPR"
+    echo "    build the package returned by EXPR"
     echo "  --tempdir"
     echo "    create a tempdir and run the build there"
     echo "    by default, the build is run in the current workdir"
+    echo "  --remove-tempdir"
+    echo "    remove tempdir when the debug shell is closed"
+    echo "  --workdir DIR"
+    echo "    use DIR as NIX_BUILD_TOP"
+    echo "  --tmp-nix-store DIR"
+    echo "    use the temporary nix store in DIR"
+    echo "  --debug"
+    echo "    print debug output"
+    echo "    repeat to increase debug level"
 }
 
 
