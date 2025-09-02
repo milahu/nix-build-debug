@@ -812,10 +812,7 @@ echo "writing $bashrc_path"
 
     echo "shopt -u nullglob"
 
-    echo "unset TZ"
-    if [ -n "$TZ" ]; then
-        echo "export TZ=${TZ@Q}"
-    fi
+    echo "export TZ=UTC"
 
     for key in ${unset_envs[@]}; do
         echo "unset $key"
