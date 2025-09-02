@@ -940,10 +940,16 @@ chmod +x "$enter_sh_path"
 
 
 
+# start the debug shell
+
 # TODO? run this in a clean env
 # inherit only requires envs
 
 "$shell" --noprofile --rcfile "$bashrc_path"
+
+
+
+# cleanup
 
 if $chdir_build_root; then
   if $remove_tempdir; then
