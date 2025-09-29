@@ -149,8 +149,9 @@ ignore_envs=(
     NIX_SSL_CERT_FILE
 )
 
+declare -A default_envs
 default_envs=(
-    [SSL_CERT_FILE]=/etc/ssl/certs/ca-bundle.crt
+    ['SSL_CERT_FILE']='/etc/ssl/certs/ca-bundle.crt'
 )
 
 while (( "$#" )); do
