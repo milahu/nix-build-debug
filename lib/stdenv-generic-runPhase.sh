@@ -250,7 +250,7 @@ runPhase() {
 
     local startTime=$(date +"%s")
 
-    subshell_temp=$(mktemp -u -t "$([ -d /run/user/$UID ] && echo "-p/run/user/$UID" || echo "-p$__NIX_BUILD_DEBUG_DIR")" shell.$$.subshell.XXXXXXXXXX)
+    subshell_temp=$(mktemp -u "$([ -d /run/user/$UID ] && echo "-p/run/user/$UID" || echo "-p$__NIX_BUILD_DEBUG_DIR")" shell.$$.subshell.XXXXXXXXXX)
     #subshell_id=${subshell_temp##*.}
 
     # run the phase function in a subshell to catch exit
