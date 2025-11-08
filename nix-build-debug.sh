@@ -863,6 +863,30 @@ echo "writing $bashrc_path"
     $debug &&
     echo 'echo bashrc: PATH=${PATH@Q}'
 
+    # revert buildPhase of nix-shell
+    # fix: nix-shell overrides buildPhase in
+    # nixpkgs/pkgs/build-support/mkshell/default.nix
+    #   buildPhase = ''
+    #     { echo "------------------------------------------------------------";
+    #       echo " WARNING: the existence of this path is not guaranteed.";
+    #       echo " It is an internal implementation detail for pkgs.mkShell.";
+    #       echo "------------------------------------------------------------";
+    #       echo;
+    #       # Record all build inputs as runtime dependencies
+    #       export;
+    #     } >> "$out"
+    #   '';
+    # this bad buildPhase is also stored in $NIX_BUILD_TOP/env-vars
+    # and apparently nix-shell does "source env-vars"
+    # declare -x buildPhase=$'...'
+    # the correct buildPhase is in .nix-build-debug/etc/env.json
+    if $debug; then
+      echo 'echo "reverting buildPhase of nix-shell:"'
+      echo 'echo "$buildPhase"'
+    fi
+    # this requires jq, so we do it after setting PATH
+    echo 'buildPhase="$(cat $NIX_BUILD_TOP/.nix-build-debug/etc/env.json | jq -r .bashFunctions.buildPhase)"'
+
     # add completions
     echo 'complete -W "$phases" -o nosort runPhase'
     echo 'complete -W "$_phases_and_hooks" -o nosort editPhase'
