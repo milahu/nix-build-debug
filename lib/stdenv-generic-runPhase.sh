@@ -250,7 +250,19 @@ runPhase() {
 
     local startTime=$(date +"%s")
 
-    subshell_temp=$(mktemp -u "$([ -d /run/user/$UID ] && echo "-p/run/user/$UID" || echo "-p$__NIX_BUILD_DEBUG_DIR")" shell.$$.subshell.XXXXXXXXXX)
+    subshell_temp=$(
+        mktemp -u "$(
+            if [ -d /run/user/$UID ]; then
+                # use tmpfs to avoid disk writes
+                # mktemp -u -p/run/user/$UID shell.$$.subshell.XXXXXXXXXX
+                echo "-p/run/user/$UID"
+            else
+                # note: we need an absolute path because phases can change the workdir
+                # for example configurePhase can "cd build"
+                echo "-p$(realpath "$__NIX_BUILD_DEBUG_DIR")"
+            fi
+        )" shell.$$.subshell.XXXXXXXXXX
+    )
     #subshell_id=${subshell_temp##*.}
 
     # run the phase function in a subshell to catch exit
