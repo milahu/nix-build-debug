@@ -529,6 +529,7 @@ if [ -z "$phases" ]; then
             .postPhases.value
         ] |
         map(select(. != null)) |
+        flatten |
         .[]
     '))
 fi
