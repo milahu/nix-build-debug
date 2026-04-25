@@ -395,11 +395,15 @@ nix_build_env_expr=$(
     # print env.json
     echo "    echo ${env_json_start@Q}"
     #echo '    outputs=""' # test: no outputs
-    echo '    read firstOutput _ <<<"$outputs"'
+    # __olist was set by get-env.sh
+    echo '    read firstOutput _ <<<"$__olist"'
     echo "    if [ -z \"\$firstOutput\" ]; then"
     # $ nix-shell -E 'with import <nixpkgs> {}; stdenv.mkDerivation { outputs = []; }'
     # error: list index 0 is out of bounds
     echo "      echo 'error: the derivation has no outputs'"
+    echo "      echo outputs = ''\${outputs@Q}"
+    echo "      echo outputs[@] = ''\${outputs[@]}"
+    echo "      echo !outputs[@] = ''\${!outputs[@]}"
     echo "      exit 2"
     echo "    fi"
     #echo "    echo \"# firstOutput = ''\${firstOutput@Q}\"" # debug
@@ -599,7 +603,6 @@ $debug &&
 echo "writing $variables_path" >&2
 
 {
-    # FIXME handle .structuredAttrs
     echo "$env_json" | jq -r '
         .variables | to_entries |
         map(select(
@@ -697,7 +700,12 @@ mkdir -p "$lib_dir"
 # the builder should write files only to $build_root
 # not to the nix store
 
-outputs=$(echo "$env_json" | jq -r ".variables.outputs.value // empty")
+outputs=$(echo "$env_json" | jq -r '
+    .variables.outputs.value // empty |
+    if type == "object" then keys | join(" ")
+    else .
+    end
+')
 if [ -z "$outputs" ]; then
     echo "error: the derivation has no outputs" >&2
     exit 1
