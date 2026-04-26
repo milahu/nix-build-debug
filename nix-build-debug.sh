@@ -1014,3 +1014,9 @@ if $chdir_build_root; then
     echo "  rm -rf ${build_root@Q}" >&2
   fi
 fi
+
+if [ -e "$tmp_nix_store" ]; then
+  # echo "to remove the temporary nix store:" >&2
+  echo "to remove installed files:" >&2
+  echo "  sudo rm -rf ${tmp_nix_store@Q}" >&2
+fi
