@@ -76,8 +76,9 @@ done
 
 # parse args
 
-#build_root="$PWD"
-build_root="."
+build_root="$PWD"
+# no. this breaks editPhase with workdir != $build_root
+# build_root="."
 pkgs_path=""
 pkg_attr=""
 pkg_expr=""
