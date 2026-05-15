@@ -1,0 +1,11 @@
+export LANG=en_US.UTF-8
+
+for tools like "git log"
+
+
+
+by default, no lang is set
+
+nix-build -E 'with import <nixpkgs> {}; stdenv.mkDerivation { name = "x"; buildCommand = "env; exit 1"; }' 2>&1 | grep -e ^LC_ -e ^LANG=
+
+cat doc/nix-build-env.txt | grep -e ^LC_ -e ^LANG=
