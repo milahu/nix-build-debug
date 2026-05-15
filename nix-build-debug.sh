@@ -949,6 +949,16 @@ echo "writing $bashrc_path"
     fi
     # this requires jq, so we do it after setting PATH
     echo 'buildPhase="$(cat $NIX_BUILD_TOP/.nix-build-debug/etc/env.json | jq -r .bashFunctions.buildPhase)"'
+    # FIXME? just unset the buildPhase variable?
+    # the default buildPhase is a function
+    # and an empty buildPhase variable means "call the buildPhase function"
+    if $debug; then
+      echo 'echo "new buildPhase variable:"'
+      echo 'echo "$buildPhase"'
+      echo 'echo "buildPhase function:"'
+      echo 'declare -f buildPhase'
+      echo 'echo "FIXME? just unset the buildPhase variable?"'
+    fi
     echo 'fi'
 
     # add completions
