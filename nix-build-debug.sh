@@ -912,6 +912,7 @@ echo "writing $bashrc_path"
     $debug &&
     echo 'echo bashrc: PATH=${PATH@Q}'
 
+    # TODO verify. apparently, this "bad buildPhase" is no longer set
     # revert buildPhase of nix-shell
     # fix: nix-shell overrides buildPhase in
     # nixpkgs/pkgs/build-support/mkshell/default.nix
@@ -925,16 +926,30 @@ echo "writing $bashrc_path"
     #       export;
     #     } >> "$out"
     #   '';
+    # see also: lib/nix-shell-buildPhase.sh
     # this bad buildPhase is also stored in $NIX_BUILD_TOP/env-vars
     # and apparently nix-shell does "source env-vars"
     # declare -x buildPhase=$'...'
     # the correct buildPhase is in .nix-build-debug/etc/env.json
+    # echo "if grep -q $'\nexport;\n} >> \"$out\"$' <<<\"$buildPhase\"; then"
+    # echo "if [ \"$(echo \"$buildPhase\" | tail -c20)\" = $'export;\n} >> \"$out\"' ]; then"
+    if $debug; then
+      echo 'echo "buildPhase: ${buildPhase@Q}"'
+      echo '__nix_build_debug_buildPhase_tail="${buildPhase: -19}"'
+      echo 'echo "__nix_build_debug_buildPhase_tail: ${__nix_build_debug_buildPhase_tail@Q}"'
+      echo 'unset __nix_build_debug_buildPhase_tail'
+    fi
+    # TODO verify the cut index -19
+    # revert only a bad buildPhase
+    # TODO be more strict?
+    echo "if [ \"${buildPhase: -19}\" = $'export;\n} >> \"$out\"' ]; then"
     if $debug; then
       echo 'echo "reverting buildPhase of nix-shell:"'
       echo 'echo "$buildPhase"'
     fi
     # this requires jq, so we do it after setting PATH
     echo 'buildPhase="$(cat $NIX_BUILD_TOP/.nix-build-debug/etc/env.json | jq -r .bashFunctions.buildPhase)"'
+    echo 'fi'
 
     # add completions
     echo 'complete -W "$phases" -o nosort runPhase'
