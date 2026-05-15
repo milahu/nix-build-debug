@@ -84,7 +84,9 @@ pkg_attr=""
 pkg_expr=""
 pure=false
 chdir_build_root=false
+tempdir=false
 remove_tempdir=false
+workdir=
 help=false
 debug=false
 debug2=false
@@ -167,6 +169,7 @@ while (( "$#" )); do
             shift 2
             ;;
         --tempdir)
+            tempdir=true
             build_root=$(mktemp -d -t nix-build-debug.XXXXXX)
             echo "using temporary build root ${build_root@Q}" >&2
             chdir_build_root=true
@@ -189,6 +192,7 @@ while (( "$#" )); do
             shift 2
             ;;
         --workdir)
+            workdir="$2"
             build_root="$2"
             if ! [ -d "$build_root" ]; then
                 echo "error: invalid workdir path: ${build_root@Q}" >&2
@@ -771,6 +775,31 @@ echo "writing $bashrc_path"
     #echo "[ -e \"$stdenv_setup\" ] && source \"$stdenv_setup\""
 
     echo "source ${variables_path@Q}"
+
+    if ! $tempdir; then
+        # workdir is $PWD or $workdir
+        # so maybe $NIX_BUILD_TOP == $sourceRoot
+        # patch sourceRoot: try to remove the first path component
+        echo 'if [ -n "$sourceRoot" ]; then'
+        echo '  # remove the first path component: a/b/c -> b/c'
+        echo '  __nix_build_debug_sourceRoot2="${sourceRoot#*/}"'
+        echo '  if [ "$__nix_build_debug_sourceRoot2" = "$sourceRoot" ]; then'
+        echo '    # example: sourceRoot=source'
+        # TODO? fix unpackPhase: if [ -z "$sourceRoot" ]; then
+        # echo '    __nix_build_debug_sourceRoot2='
+        echo '    __nix_build_debug_sourceRoot2=.'
+        echo '  fi'
+        echo '  if [ "${__nix_build_debug_sourceRoot2:0:2}" = "./" ]; then'
+        echo '    # example: sourceRoot=source/./src'
+        echo '    __nix_build_debug_sourceRoot2="${__nix_build_debug_sourceRoot2:2}"'
+        echo '  fi'
+        echo '  if [ -z "$__nix_build_debug_sourceRoot2" ] || [ -d "$__nix_build_debug_sourceRoot2" ]; then'
+        echo '    echo "patching sourceRoot: ${sourceRoot@Q} -> ${__nix_build_debug_sourceRoot2@Q}"'
+        echo '    sourceRoot="$__nix_build_debug_sourceRoot2"'
+        echo '  fi'
+        echo '  unset __nix_build_debug_sourceRoot2'
+        echo 'fi'
+    fi
 
     # non-standard: set default sourceRoot=.
     # TODO why? this breaks unpackPhase: if [ -z "$sourceRoot" ]; then
