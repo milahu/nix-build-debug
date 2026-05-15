@@ -115,6 +115,15 @@ editPhase() {
         return 1
     fi
 
+    if [ \
+        "$(sha256sum "$curPhasePath" | head -c64)" = \
+        "$(sha256sum "$curPhasePathBak" | head -c64)" \
+    ]; then
+        # dont load unchanged phase file
+        echo "editPhase: no changes in ${curPhasePath@Q}"
+        return 0
+    fi
+
     echo "loading the modified $curPhase from ${curPhasePath@Q}"
     if $isPhaseString; then
         # always trace this
