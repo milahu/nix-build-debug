@@ -939,7 +939,20 @@ echo "writing $bashrc_path"
     # envCommand is empty when "--command" and "--run" are not used
 
     if $chdir_build_root; then
+        echo "echo changing workdir to ${build_root@Q}"
         echo "cd ${build_root@Q}"
+    fi
+
+    if ! $tempdir; then
+        # workdir is $PWD or $workdir
+        # so maybe $NIX_BUILD_TOP == $sourceRoot
+        # echo "echo changing workdir to ${build_root@Q}"
+        # echo "cd ${build_root@Q}"
+        echo '# try to change workdir to $sourceRoot'
+        echo 'if [ -d "$sourceRoot" ]; then'
+        echo '  echo "changing workdir to ${sourceRoot@Q}"'
+        echo '  cd "$sourceRoot"'
+        echo 'fi'
     fi
 
     echo "export __NIX_BUILD_DEBUG_DIR=${debug_dir@Q}"
