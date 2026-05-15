@@ -307,6 +307,11 @@ if ! is_clean_path "$build_root"; then
     exit 1
 fi
 
+if $tempdir && [ -n "$workdir" ]; then
+    echo "error: both tempdir and workdir are set. you can use only one" >&2
+    exit 1
+fi
+
 
 
 function get_json_array() {
