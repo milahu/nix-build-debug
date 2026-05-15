@@ -849,6 +849,11 @@ echo "writing $bashrc_path"
         echo "}"
     done
 
+    echo 'function cd() {'
+    echo '    # cd: set default dir to $NIX_BUILD_TOP'
+    echo '    HOME="$NIX_BUILD_TOP" builtin cd "$@"'
+    echo '}'
+
     # TODO what?
     echo "shopt -s execfail"
 
